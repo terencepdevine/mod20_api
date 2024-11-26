@@ -14,6 +14,15 @@ const roleSchema = new mongoose.Schema(
     slug: {
       type: String
     },
+    introduction: {
+      type: String,
+      trime: true,
+      maxlength: [500, 'Introduction text must have less than 500 characters']
+    },
+    // spellSlotProgression: {
+    //   type: mongoose.Schema.ObjectId,
+    //   ref: 'SpellSlotProgression'
+    // },
     hp_dice: {
       type: Number,
       required: true,
@@ -23,33 +32,6 @@ const roleSchema = new mongoose.Schema(
         message:
           'hp_dice must be one of the following values: 4, 6, 8, 10, or 12'
       }
-    },
-    alignment: {
-      type: String,
-      required: [true, 'An alignment is required'],
-      default: 'True Neutral',
-      enum: {
-        values: [
-          'Lawful Good',
-          'Neutral Good',
-          'Chaotic Good',
-          'Lawful Neutral',
-          'True Neutral',
-          'Chaotic Neutral',
-          'Lawful Evil',
-          'Neutral Evil',
-          'Chaotic Evil'
-        ],
-        message: 'Alignment must be one of the 9 D&D alignments'
-      }
-    },
-    alignmentDescription: {
-      type: String,
-      trim: true,
-      maxlength: [
-        500,
-        'Alignment description must have less than 500 characters'
-      ]
     },
     systems: [
       {

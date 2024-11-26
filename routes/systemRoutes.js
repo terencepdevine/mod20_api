@@ -6,8 +6,12 @@ const raceRouter = require('../routes/raceRoutes');
 
 const router = express.Router();
 
-router.route('/:id/navigation').get(systemController.getSystemNavigation);
-router.route('/:id/introduction').get(systemController.getSystemIntroduction);
+router.route('/:systemId/navigation').get(systemController.getSystemNavigation);
+router.route('/:systemId/character').get(systemController.getSystemCharacter);
+
+router
+  .route('/:systemId/introduction')
+  .get(systemController.getSystemIntroduction);
 
 router
   .route('/')

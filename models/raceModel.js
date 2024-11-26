@@ -19,7 +19,36 @@ const raceSchema = new mongoose.Schema(
         type: mongoose.Schema.ObjectId,
         ref: 'System'
       }
-    ]
+    ],
+    alignment: {
+      value: {
+        type: String,
+        required: [true, 'An alignment is required'],
+        default: 'True Neutral',
+        enum: {
+          values: [
+            'Lawful Good',
+            'Neutral Good',
+            'Chaotic Good',
+            'Lawful Neutral',
+            'True Neutral',
+            'Chaotic Neutral',
+            'Lawful Evil',
+            'Neutral Evil',
+            'Chaotic Evil'
+          ],
+          message: 'Alignment must be one of the 9 D&D alignments'
+        }
+      },
+      description: {
+        type: String,
+        trim: true,
+        maxlength: [
+          500,
+          'Alignment description must have less than 500 characters'
+        ]
+      }
+    }
   },
   {
     toJSON: { virtuals: true },
