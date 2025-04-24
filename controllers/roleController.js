@@ -3,12 +3,12 @@ const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const factory = require('./handlerFactory');
 
-// exports.getAllRoles = factory.getAll(Role);
-exports.getAllRoles = catchAsync(async (req, res, next) => {
-  res.status(200).json({
-    status: 'success'
-  });
-});
+exports.getAllRoles = factory.getAll(Role);
+// exports.getAllRoles = catchAsync(async (req, res, next) => {
+//   res.status(200).json({
+//     status: 'success'
+//   });
+// });
 
 // exports.getRole = factory.getOne(Role);
 exports.getRole = catchAsync(async (req, res, next) => {

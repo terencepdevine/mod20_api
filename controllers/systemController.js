@@ -97,7 +97,8 @@ exports.getSystem = catchAsync(async (req, res, next) => {
 exports.createSystem = factory.createOne(System);
 
 exports.updateSystem = catchAsync(async (req, res, next) => {
-  const { characterUpdates, ...systemUpdates } = req.body;
+  const { characterUpdates, roles, races, ...systemUpdates } = req.body;
+
   const system = await System.findByIdAndUpdate(req.params.id, systemUpdates, {
     new: true,
     runValidators: true
@@ -105,10 +106,19 @@ exports.updateSystem = catchAsync(async (req, res, next) => {
 
   if (!system) return next(new AppError('No System found with that ID', 404));
 
-  if (characterUpdates && system.character) {
+  if (system.character) {
+    const characterUpdateFields = { ...characterUpdates };
+
+    if (roles) {
+      characterUpdateFields.roles = roles;
+    }
+    if (races) {
+      characterUpdateFields.races = races;
+    }
+
     await SystemCharacter.findByIdAndUpdate(
       system.character,
-      characterUpdates,
+      characterUpdateFields,
       {
         new: true,
         runValidators: true

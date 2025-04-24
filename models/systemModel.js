@@ -12,6 +12,18 @@ const systemSchema = new mongoose.Schema(
       minlength: 4,
       maxlength: 40
     },
+    abilities: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'Ability'
+      }
+    ],
+    skills: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'Skill'
+      }
+    ],
     slug: {
       type: String
     },

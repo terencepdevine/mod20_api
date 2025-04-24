@@ -19,10 +19,32 @@ const roleSchema = new mongoose.Schema(
       trime: true,
       maxlength: [500, 'Introduction text must have less than 500 characters']
     },
-    // spellSlotProgression: {
-    //   type: mongoose.Schema.ObjectId,
-    //   ref: 'SpellSlotProgression'
-    // },
+    armorTaxonomies: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'ArmorTaxonomy'
+      }
+    ],
+    weaponTaxonomies: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'WeaponTaxonomy'
+      }
+    ],
+    savingThrows: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'Ability',
+        required: true
+      }
+    ],
+    skills: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'Skill',
+        required: true
+      }
+    ],
     hp_dice: {
       type: Number,
       required: true,
@@ -49,11 +71,14 @@ const roleSchema = new mongoose.Schema(
 roleSchema.pre('save', setSlug);
 roleSchema.pre('findOneAndUpdate', setSlug);
 
-// roleSchema.pre(/^find/, function(next) {
-//   this.populate('systems');
+roleSchema.pre(/^find/, function(next) {
+  this.populate({ path: 'weaponTaxonomies' })
+    .populate({ path: 'armorTaxonomies' })
+    .populate({ path: 'savingThrows', select: 'name' })
+    .populate({ path: 'skills', select: 'name -relatedAbility' });
 
-//   next();
-// });
+  next();
+});
 
 const Role = mongoose.model('Role', roleSchema);
 
