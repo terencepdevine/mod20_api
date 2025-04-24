@@ -11,6 +11,7 @@ MOD20 is a modular, system-agnostic TTRPG engine that draws inspiration from D&D
 ## What's here
 
 This API supports:
+
 - Creating and managing custom **Systems**
 - Defining **Races**, **Roles**, **Items**, **Attacks**, etc.
 - Admin routes for editing content
@@ -31,3 +32,4 @@ cd mod20_api
 npm install
 cp .env.example .env  # Fill out your environment variables
 npm run dev           # Start the server in dev mode
+```
