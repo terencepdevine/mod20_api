@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@mod20/types*": ["../mod20_types"]
+    },
     "module": "CommonJS",
     "target": "ES6",
     "types": ["node", "mongoose"],

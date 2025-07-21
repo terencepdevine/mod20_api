@@ -8,7 +8,7 @@ router
     .get(raceController.getAllRaces)
     .post(raceController.createRace);
 router
-    .route('/:id')
+    .route('/:sectionSlug')
     .get(raceController.getRace)
     .patch(raceController.updateRace)
     .delete(raceController.deleteRace);

@@ -1,6 +1,7 @@
 const sanitizeHtml = require('sanitize-html');
 const express = require('express');
 
+import path from 'path';
 import { Request, Response, NextFunction } from 'express';
 
 const cors = require('cors');
@@ -34,6 +35,7 @@ if (process.env.NODE_ENV === 'development') {
 
 // Body parser, reading data from body into req.body
 app.use(express.json({ limit: '10kb' }));
+app.use('/public', express.static(path.join(__dirname, 'public')));
 
 // Data sanitization against NoSQL query injection
 app.use(mongoSanitize());

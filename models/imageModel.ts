@@ -1,6 +1,16 @@
-const mongoose = require('mongoose');
+import mongoose, { Schema, Document, Model } from 'mongoose';
 
-const imageSchema = new mongoose.Schema(
+export interface IImage extends Document {
+  file: string;
+  altText: string;
+  description?: string;
+  artistName: string;
+  artistUrl?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const imageSchema = new Schema<IImage>(
   {
     file: {
       type: String,
@@ -26,14 +36,6 @@ const imageSchema = new mongoose.Schema(
     },
     artistUrl: {
       type: String,
-      // validate: {
-      //   validator: function(val) {
-      //     return /^(https?:\/\/)?([\da-z.-]+)\.([a-z.]{2,6})([\/\w .-]*)*\/?$/.test(
-      //       val
-      //     );
-      //   },
-      //   message: 'Artist URL must be a valid URL'
-      // },
       trim: true
     }
   },
@@ -42,6 +44,6 @@ const imageSchema = new mongoose.Schema(
   }
 );
 
-const Image = mongoose.model('Image', imageSchema);
+const Image: Model<IImage> = mongoose.model<IImage>('Image', imageSchema);
 
-module.exports = Image;
+export default Image;

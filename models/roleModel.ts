@@ -1,7 +1,8 @@
-const mongoose = require('mongoose');
+import mongoose, { Schema, Document, Model } from 'mongoose';
+import { RoleType } from '@mod20/types/src/RoleType';
 const setSlug = require('../utils/setSlug');
 
-const roleSchema = new mongoose.Schema(
+const roleSchema = new Schema<RoleType>(
   {
     name: {
       type: String,
@@ -16,31 +17,31 @@ const roleSchema = new mongoose.Schema(
     },
     introduction: {
       type: String,
-      trime: true,
+      trim: true,
       maxlength: [500, 'Introduction text must have less than 500 characters']
     },
     armorTaxonomies: [
       {
-        type: mongoose.Schema.ObjectId,
+        type: Schema.Types.ObjectId,
         ref: 'ArmorTaxonomy'
       }
     ],
     weaponTaxonomies: [
       {
-        type: mongoose.Schema.ObjectId,
+        type: Schema.Types.ObjectId,
         ref: 'WeaponTaxonomy'
       }
     ],
     savingThrows: [
       {
-        type: mongoose.Schema.ObjectId,
+        type: Schema.Types.ObjectId,
         ref: 'Ability',
         required: true
       }
     ],
     skills: [
       {
-        type: mongoose.Schema.ObjectId,
+        type: Schema.Types.ObjectId,
         ref: 'Skill',
         required: true
       }
@@ -55,12 +56,22 @@ const roleSchema = new mongoose.Schema(
           'hp_dice must be one of the following values: 4, 6, 8, 10, or 12'
       }
     },
+    tools: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'ToolTaxonomy'
+      }
+    ],
     systems: [
       {
-        type: mongoose.Schema.ObjectId,
+        type: Schema.Types.ObjectId,
         ref: 'System'
       }
-    ]
+    ],
+    photo: {
+      type: String,
+      default: 'default.jpg'
+    }
   },
   {
     toJSON: { virtuals: true },
@@ -71,15 +82,16 @@ const roleSchema = new mongoose.Schema(
 roleSchema.pre('save', setSlug);
 roleSchema.pre('findOneAndUpdate', setSlug);
 
-roleSchema.pre(/^find/, function(next) {
+roleSchema.pre(/^find/, function(this: any, next: () => void) {
   this.populate({ path: 'weaponTaxonomies' })
     .populate({ path: 'armorTaxonomies' })
     .populate({ path: 'savingThrows', select: 'name' })
-    .populate({ path: 'skills', select: 'name -relatedAbility' });
+    .populate({ path: 'skills', select: 'name -relatedAbility' })
+    .populate({ path: 'tools' });
 
   next();
 });
 
-const Role = mongoose.model('Role', roleSchema);
+const Role: Model<RoleType> = mongoose.model<RoleType>('Role', roleSchema);
 
-module.exports = Role;
+export default Role;

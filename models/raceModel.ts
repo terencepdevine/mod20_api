@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 import { RaceType } from '@mod20/types';
 
 const setSlug = require('../utils/setSlug');
@@ -15,6 +15,7 @@ const raceSchema = new Schema<RaceType>(
     },
     slug: {
       type: String,
+      required: [true, 'A System must have a slug'],
       unique: true,
       lowercase: true
     },
@@ -25,7 +26,7 @@ const raceSchema = new Schema<RaceType>(
       }
     ],
     age: {
-      type: String
+      type: Number
     },
     size: {
       type: String
@@ -57,7 +58,6 @@ const raceSchema = new Schema<RaceType>(
     alignment: {
       value: {
         type: String,
-        required: [true, 'An alignment is required'],
         default: 'True Neutral',
         enum: {
           values: [
@@ -69,7 +69,8 @@ const raceSchema = new Schema<RaceType>(
             'Chaotic Neutral',
             'Lawful Evil',
             'Neutral Evil',
-            'Chaotic Evil'
+            'Chaotic Evil',
+            null
           ],
           message: 'Alignment must be one of the 9 D&D alignments'
         }
@@ -94,7 +95,7 @@ raceSchema.pre('save', setSlug);
 raceSchema.pre('findOneAndUpdate', setSlug);
 
 raceSchema.pre(/^find/, function(next) {
-  if (this.options.skipPopulation) return next();
+  // if (this.options.skipPopulation) return next();
 
   this.populate({
     path: 'traits',

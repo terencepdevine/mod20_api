@@ -1,8 +1,16 @@
-const mongoose = require('mongoose');
+import mongoose, { Schema, Document, Model } from 'mongoose';
+import { SystemType } from '@mod20/types/src/SystemType';
 const setSlug = require('../utils/setSlug');
-const SystemCharacter = require('./systemCharacterModel');
 
-const systemSchema = new mongoose.Schema(
+export interface ISystem extends SystemType, Document {
+  abilities: mongoose.Types.ObjectId[];
+  skills: mongoose.Types.ObjectId[];
+  slug: string;
+  character: mongoose.Types.ObjectId;
+  backgroundImage: string;
+}
+
+const systemSchema = new Schema<ISystem>(
   {
     name: {
       type: String,
@@ -14,13 +22,13 @@ const systemSchema = new mongoose.Schema(
     },
     abilities: [
       {
-        type: mongoose.Schema.ObjectId,
+        type: Schema.Types.ObjectId,
         ref: 'Ability'
       }
     ],
     skills: [
       {
-        type: mongoose.Schema.ObjectId,
+        type: Schema.Types.ObjectId,
         ref: 'Skill'
       }
     ],
@@ -37,8 +45,12 @@ const systemSchema = new mongoose.Schema(
       type: String
     },
     character: {
-      type: mongoose.Schema.ObjectId,
+      type: Schema.Types.ObjectId,
       ref: 'SystemCharacter'
+    },
+    backgroundImage: {
+      type: String,
+      default: 'default.jpg'
     }
   },
   {
@@ -47,27 +59,25 @@ const systemSchema = new mongoose.Schema(
   }
 );
 
-// Automatically set slug
 systemSchema.pre('save', setSlug);
 systemSchema.pre('findOneAndUpdate', setSlug);
 
-// Create default SystemCharacter if missing
-systemSchema.pre('save', async function(next) {
+systemSchema.pre('save', async function(this: ISystem, next: () => void) {
   if (this.isNew && !this.character) {
     try {
+      const SystemCharacter = mongoose.model('SystemCharacter');
       const newSystemCharacter = await SystemCharacter.create({
         name: `${this.name} System Character`
       });
       this.character = newSystemCharacter._id;
     } catch (err) {
-      return next(err);
+      return next(err as Error);
     }
   }
   next();
 });
 
-// Automatically populate character field
-systemSchema.pre(/^find/, function(next) {
+systemSchema.pre(/^find/, function(this: any, next: () => void) {
   if (this.options.skipPopulation) return next();
 
   this.populate({
@@ -77,6 +87,6 @@ systemSchema.pre(/^find/, function(next) {
   next();
 });
 
-const System = mongoose.model('System', systemSchema);
+const System: Model<ISystem> = mongoose.model<ISystem>('System', systemSchema);
 
-module.exports = System;
+export default System;

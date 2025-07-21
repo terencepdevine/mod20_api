@@ -6,11 +6,13 @@ const raceRouter = require('../routes/raceRoutes');
 
 const router = express.Router();
 
-router.route('/:systemId/navigation').get(systemController.getSystemNavigation);
-router.route('/:systemId/character').get(systemController.getSystemCharacter);
+router
+  .route('/:systemSlug/navigation')
+  .get(systemController.getSystemNavigation);
+router.route('/:systemSlug/character').get(systemController.getSystemCharacter);
 
 router
-  .route('/:systemId/introduction')
+  .route('/:systemSlug/introduction')
   .get(systemController.getSystemIntroduction);
 
 router
@@ -19,12 +21,12 @@ router
   .post(systemController.createSystem);
 
 router
-  .route('/:id')
+  .route('/:systemSlug')
   .get(systemController.getSystem)
-  .patch(systemController.updateSystem)
+  .patch(systemController.uploadBackgroundImage, systemController.updateSystem)
   .delete(systemController.deleteSystem);
 
-router.use('/:systemId/roles', roleRouter);
-router.use('/:systemId/races', raceRouter);
+router.use('/:systemSlug/roles', roleRouter);
+router.use('/:systemSlug/races', raceRouter);
 
 module.exports = router;

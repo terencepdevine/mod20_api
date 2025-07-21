@@ -9,9 +9,9 @@ router
   .post(roleController.createRole);
 
 router
-  .route('/:id')
+  .route('/:sectionSlug')
   .get(roleController.getRole)
-  .patch(roleController.updateRole)
+  .patch(roleController.uploadRoleImage, roleController.updateRole)
   .delete(roleController.deleteRole);
 
 module.exports = router;

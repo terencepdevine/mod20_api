@@ -1,7 +1,11 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const sanitizeHtml = require('sanitize-html');
 const express = require('express');
+const path_1 = __importDefault(require("path"));
 const cors = require('cors');
 const morgan = require('morgan');
 const helmet = require('helmet');
@@ -27,6 +31,7 @@ if (process.env.NODE_ENV === 'development') {
 }
 // Body parser, reading data from body into req.body
 app.use(express.json({ limit: '10kb' }));
+app.use('/public', express.static(path_1.default.join(__dirname, 'public')));
 // Data sanitization against NoSQL query injection
 app.use(mongoSanitize());
 // Data sanitization whitelist

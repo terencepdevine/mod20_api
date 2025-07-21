@@ -18,10 +18,14 @@ exports.deleteOne = Model =>
 
 exports.updateOne = Model =>
   catchAsync(async (req, res, next) => {
-    const doc = await Model.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
-    });
+    const doc = await Model.findOneAndUpdate(
+      { slug: req.params.systemSlug },
+      req.body,
+      {
+        new: true,
+        runValidators: true
+      }
+    );
 
     if (!doc) {
       return next(new AppError('No document found with that ID', 404));
@@ -64,7 +68,7 @@ exports.getOne = (Model, popOptions) =>
 exports.getAll = Model =>
   catchAsync(async (req, res, next) => {
     let filter = {};
-    if (req.params.systemId) filter = { systems: req.params.systemId };
+    if (req.params.systemSlug) filter = { systems: req.params.systemSlug };
 
     const features = new APIFeatures(Model.find(filter), req.query)
       .filter()
