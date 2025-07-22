@@ -1,12 +1,10 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import { WeaponTaxonomyType } from '@mod20/types/src/WeaponTaxonomyType';
 
-export interface IWeaponTaxonomy extends WeaponTaxonomyType, Document {}
-
-const WeaponTaxonomySchema = new Schema<IWeaponTaxonomy>({
+const WeaponTaxonomySchema = new Schema<WeaponTaxonomyType>({
   name: { type: String, required: true }
 });
 
-const WeaponTaxonomy: Model<IWeaponTaxonomy> = mongoose.model<IWeaponTaxonomy>('WeaponTaxonomy', WeaponTaxonomySchema);
+const WeaponTaxonomy: Model<WeaponTaxonomyType> = mongoose.model<WeaponTaxonomyType>('WeaponTaxonomy', WeaponTaxonomySchema);
 
-export default WeaponTaxonomy;
+module.exports = WeaponTaxonomy;

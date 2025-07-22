@@ -1,13 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import { SkillType } from '@mod20/types/src/SkillType';
 
-export interface ISkill extends SkillType, Document {
-  description?: string;
-  relatedAbility: mongoose.Types.ObjectId;
-  system: mongoose.Types.ObjectId;
-}
-
-const skillSchema = new Schema<ISkill>({
+const skillSchema = new Schema<SkillType>({
   name: { type: String, required: true, unique: true },
   description: { type: String },
   relatedAbility: { type: Schema.Types.ObjectId, ref: 'Ability' },
@@ -24,6 +18,6 @@ skillSchema.pre(/^find/, function(this: any, next: () => void) {
   next();
 });
 
-const Skill: Model<ISkill> = mongoose.model<ISkill>('Skill', skillSchema);
+const Skill: Model<SkillType> = mongoose.model<SkillType>('Skill', skillSchema);
 
-export default Skill;
+module.exports = Skill;

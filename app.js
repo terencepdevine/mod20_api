@@ -21,6 +21,21 @@ const traitRouter = require('./routes/traitRoutes');
 const armorTaxonomyRouter = require('./routes/armorTaxonomyRoutes');
 const weaponTaxonomyRouter = require('./routes/weaponTaxonomyRoutes');
 const userRouter = require('./routes/userRoutes');
+
+// Import all models to ensure they're registered with Mongoose
+require('./models/abilityModel');
+require('./models/armorTaxonomyModel');
+require('./models/imageModel');
+require('./models/raceModel');
+require('./models/roleModel');
+require('./models/skillModel');
+require('./models/systemCharacterModel');
+require('./models/systemModel');
+require('./models/toolTaxonomyModel');
+require('./models/traitModel');
+require('./models/userModel');
+require('./models/weaponTaxonomyModel');
+
 const app = express();
 // Set security HTTP headers
 app.use(helmet());

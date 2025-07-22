@@ -94,4 +94,4 @@ roleSchema.pre(/^find/, function(this: any, next: () => void) {
 
 const Role: Model<RoleType> = mongoose.model<RoleType>('Role', roleSchema);
 
-export default Role;
+module.exports = Role;

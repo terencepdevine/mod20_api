@@ -1,11 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
+import { TraitType } from '@mod20/types/src/TraitType';
 
-export interface ITrait extends Document {
-  name: string;
-  description?: string;
-}
-
-const traitSchema = new Schema<ITrait>({
+const traitSchema = new Schema<TraitType>({
   name: {
     type: String,
     required: true,
@@ -16,6 +12,6 @@ const traitSchema = new Schema<ITrait>({
   }
 });
 
-const Trait: Model<ITrait> = mongoose.model<ITrait>('Trait', traitSchema);
+const Trait: Model<TraitType> = mongoose.model<TraitType>('Trait', traitSchema);
 
-export default Trait;
+module.exports = Trait;

@@ -13,11 +13,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const multer_1 = __importDefault(require("multer"));
-const Role = require('../models/roleModel');
+const roleModel_1 = __importDefault(require("../models/roleModel"));
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const factory = require('./handlerFactory');
-exports.getAllRoles = factory.getAll(Role);
+exports.getAllRoles = factory.getAll(roleModel_1.default);
 const multerStorage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
         cb(null, 'public/img/roles');
@@ -42,7 +42,7 @@ const upload = (0, multer_1.default)({
 });
 exports.uploadRoleImage = upload.single('photo');
 exports.getRole = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const role = yield Role.findOne({ slug: req.params.sectionSlug });
+    const role = yield roleModel_1.default.findOne({ slug: req.params.sectionSlug });
     if (!role)
         return next(new AppError('No Role found with that Slug', 404));
     res.status(200).json({
@@ -53,13 +53,13 @@ exports.getRole = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 
         }
     });
 }));
-exports.createRole = factory.createOne(Role);
+exports.createRole = factory.createOne(roleModel_1.default);
 // exports.updateRole = factory.updateOne(Role);
 exports.updateRole = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     if (req.file) {
         req.body.photo = req.file.filename;
     }
-    const role = yield Role.findOneAndUpdate({ slug: req.params.sectionSlug }, req.body, { new: true, runValidators: true });
+    const role = yield roleModel_1.default.findOneAndUpdate({ slug: req.params.sectionSlug }, req.body, { new: true, runValidators: true });
     if (!role)
         return next(new AppError('No Role found with that slug', 404));
     res.status(200).json({
@@ -68,7 +68,7 @@ exports.updateRole = catchAsync((req, res, next) => __awaiter(void 0, void 0, vo
     });
 }));
 exports.deleteRole = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const role = yield Role.findOneAndDelete({ slug: req.params.sectionSlug });
+    const role = yield roleModel_1.default.findOneAndDelete({ slug: req.params.sectionSlug });
     if (!role)
         return next(new AppError('No Role found with that slug', 404));
     res.status(204).json({

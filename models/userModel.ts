@@ -2,24 +2,15 @@ import crypto from 'crypto';
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import validator from 'validator';
 import bcrypt from 'bcryptjs';
+import { UserType } from '@mod20/types/src/UserType';
 
-export interface IUser extends Document {
-  name: string;
-  email: string;
-  photo?: string;
-  role: 'user' | 'guide' | 'lead-guide' | 'admin';
-  password: string;
-  passwordConfirm?: string;
-  passwordChangedAt?: Date;
-  passwordResetToken?: string;
-  passwordResetExpires?: Date;
-  active: boolean;
+export interface IUserMethods {
   correctPassword(candidatePassword: string, userPassword: string): Promise<boolean>;
   changedPasswordAfter(JWTTimestamp: number): boolean;
   createPasswordResetToken(): string;
 }
 
-const userSchema = new Schema<IUser>({
+const userSchema = new Schema<UserType>({
   name: {
     type: String,
     required: [true, 'Please tell us your name!']
@@ -47,7 +38,7 @@ const userSchema = new Schema<IUser>({
     type: String,
     required: [true, 'Please confirm your password'],
     validate: {
-      validator: function(this: IUser, el: string) {
+      validator: function(this: any, el: string) {
         return el === this.password;
       },
       message: 'Passwords are not the same!'
@@ -63,7 +54,7 @@ const userSchema = new Schema<IUser>({
   }
 });
 
-userSchema.pre('save', async function(this: IUser, next: () => void) {
+userSchema.pre('save', async function(this: any, next: () => void) {
   if (!this.isModified('password')) return next();
 
   this.password = await bcrypt.hash(this.password, 12);
@@ -71,7 +62,7 @@ userSchema.pre('save', async function(this: IUser, next: () => void) {
   next();
 });
 
-userSchema.pre('save', function(this: IUser, next: () => void) {
+userSchema.pre('save', function(this: any, next: () => void) {
   if (!this.isModified('password') || this.isNew) return next();
 
   this.passwordChangedAt = new Date(Date.now() - 1000);
@@ -90,7 +81,7 @@ userSchema.methods.correctPassword = async function(
   return await bcrypt.compare(candidatePassword, userPassword);
 };
 
-userSchema.methods.changedPasswordAfter = function(this: IUser, JWTTimestamp: number): boolean {
+userSchema.methods.changedPasswordAfter = function(this: any, JWTTimestamp: number): boolean {
   if (this.passwordChangedAt) {
     const changedTimestamp = parseInt(
       this.passwordChangedAt.getTime().toString(),
@@ -103,7 +94,7 @@ userSchema.methods.changedPasswordAfter = function(this: IUser, JWTTimestamp: nu
   return false;
 };
 
-userSchema.methods.createPasswordResetToken = function(this: IUser): string {
+userSchema.methods.createPasswordResetToken = function(this: any): string {
   const resetToken = crypto.randomBytes(32).toString('hex');
 
   this.passwordResetToken = crypto
@@ -118,6 +109,6 @@ userSchema.methods.createPasswordResetToken = function(this: IUser): string {
   return resetToken;
 };
 
-const User: Model<IUser> = mongoose.model<IUser>('User', userSchema);
+const User: Model<UserType> = mongoose.model<UserType>('User', userSchema);
 
-export default User;
+module.exports = User;

@@ -1,16 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
+import { ImageType } from '@mod20/types/src/ImageType';
 
-export interface IImage extends Document {
-  file: string;
-  altText: string;
-  description?: string;
-  artistName: string;
-  artistUrl?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-const imageSchema = new Schema<IImage>(
+const imageSchema = new Schema<ImageType>(
   {
     file: {
       type: String,
@@ -44,6 +35,6 @@ const imageSchema = new Schema<IImage>(
   }
 );
 
-const Image: Model<IImage> = mongoose.model<IImage>('Image', imageSchema);
+const Image: Model<ImageType> = mongoose.model<ImageType>('Image', imageSchema);
 
-export default Image;
+module.exports = Image;

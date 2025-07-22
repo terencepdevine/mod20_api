@@ -1,12 +1,7 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import { SystemCharacterType } from '@mod20/types/src/SystemCharacterType';
 
-export interface ISystemCharacter extends SystemCharacterType, Document {
-  roles: mongoose.Types.ObjectId[];
-  races: mongoose.Types.ObjectId[];
-}
-
-const systemCharacterSchema = new Schema<ISystemCharacter>(
+const systemCharacterSchema = new Schema<SystemCharacterType>(
   {
     name: {
       type: String,
@@ -49,9 +44,8 @@ systemCharacterSchema.pre(/^find/, function(this: any, next: () => void) {
   next();
 });
 
-const SystemCharacter: Model<ISystemCharacter> = mongoose.model<ISystemCharacter>(
-  'SystemCharacter',
-  systemCharacterSchema
-);
+const SystemCharacter: Model<SystemCharacterType> = mongoose.model<
+  SystemCharacterType
+>('SystemCharacter', systemCharacterSchema);
 
-export default SystemCharacter;
+module.exports = SystemCharacter;

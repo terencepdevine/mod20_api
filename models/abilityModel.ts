@@ -1,17 +1,12 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
+import { AbilityType } from '@mod20/types/src/AbilityType';
 
-export interface IAbility extends Document {
-  name: string;
-  description?: string;
-  system: mongoose.Types.ObjectId;
-}
-
-const abilitySchema = new Schema<IAbility>({
+const abilitySchema = new Schema<AbilityType>({
   name: { type: String, required: true, unique: true },
   description: { type: String },
   system: { type: Schema.Types.ObjectId, ref: 'System' }
 });
 
-const Ability: Model<IAbility> = mongoose.model<IAbility>('Ability', abilitySchema);
+const Ability: Model<AbilityType> = mongoose.model<AbilityType>('Ability', abilitySchema);
 
-export default Ability;
+module.exports = Ability;

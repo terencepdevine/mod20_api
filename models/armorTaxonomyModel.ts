@@ -1,12 +1,12 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 import { ArmorTaxonomyType } from '@mod20/types/src/ArmorTaxonomyType';
 
-export interface IArmorTaxonomy extends ArmorTaxonomyType, Document {}
-
-const ArmorTaxonomySchema = new Schema<IArmorTaxonomy>({
+const ArmorTaxonomySchema = new Schema<ArmorTaxonomyType>({
   name: { type: String, required: true }
 });
 
-const ArmorTaxonomy: Model<IArmorTaxonomy> = mongoose.model<IArmorTaxonomy>('ArmorTaxonomy', ArmorTaxonomySchema);
+const ArmorTaxonomy: Model<ArmorTaxonomyType> = mongoose.model<
+  ArmorTaxonomyType
+>('ArmorTaxonomy', ArmorTaxonomySchema);
 
-export default ArmorTaxonomy;
+module.exports = ArmorTaxonomy;

@@ -2,15 +2,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 import { SystemType } from '@mod20/types/src/SystemType';
 const setSlug = require('../utils/setSlug');
 
-export interface ISystem extends SystemType, Document {
-  abilities: mongoose.Types.ObjectId[];
-  skills: mongoose.Types.ObjectId[];
-  slug: string;
-  character: mongoose.Types.ObjectId;
-  backgroundImage: string;
-}
-
-const systemSchema = new Schema<ISystem>(
+const systemSchema = new Schema<SystemType>(
   {
     name: {
       type: String,
@@ -62,7 +54,7 @@ const systemSchema = new Schema<ISystem>(
 systemSchema.pre('save', setSlug);
 systemSchema.pre('findOneAndUpdate', setSlug);
 
-systemSchema.pre('save', async function(this: ISystem, next: () => void) {
+systemSchema.pre('save', async function(this: SystemType, next: () => void) {
   if (this.isNew && !this.character) {
     try {
       const SystemCharacter = mongoose.model('SystemCharacter');
@@ -71,7 +63,7 @@ systemSchema.pre('save', async function(this: ISystem, next: () => void) {
       });
       this.character = newSystemCharacter._id;
     } catch (err) {
-      return next(err as Error);
+      throw err;
     }
   }
   next();
@@ -87,6 +79,9 @@ systemSchema.pre(/^find/, function(this: any, next: () => void) {
   next();
 });
 
-const System: Model<ISystem> = mongoose.model<ISystem>('System', systemSchema);
+const System: Model<SystemType> = mongoose.model<SystemType>(
+  'System',
+  systemSchema
+);
 
-export default System;
+module.exports = System;
