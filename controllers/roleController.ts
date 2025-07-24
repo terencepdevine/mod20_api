@@ -55,30 +55,6 @@ exports.getRole = catchAsync(
     const role = await Role.findOne({ slug: req.params.sectionSlug });
     if (!role) return next(new AppError('No Role found with that Slug', 404));
 
-    // Migration: Convert old imageIds to new images structure if needed
-    // @ts-ignore - accessing potentially undefined field for migration
-    if (role.imageIds && role.imageIds.length > 0 && (!role.images || role.images.length === 0)) {
-      // @ts-ignore - accessing potentially undefined field for migration
-      const orderedImages = role.imageIds.map((imageId: string, index: number) => ({
-        imageId,
-        orderby: index
-      }));
-      
-      // Update the role in the database with the new structure
-      await Role.findOneAndUpdate(
-        { slug: req.params.sectionSlug },
-        { 
-          images: orderedImages,
-          $unset: { imageIds: 1 } // Remove the old field
-        },
-        { new: false } // Don't return the updated document since we have it locally
-      );
-      
-      // Update the local role object
-      role.images = orderedImages;
-      // @ts-ignore - removing old field
-      delete role.imageIds;
-    }
 
     res.status(200).json({
       status: 'success',
