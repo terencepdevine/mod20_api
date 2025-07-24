@@ -40,7 +40,7 @@ const upload = (0, multer_1.default)({
     storage: multerStorage,
     fileFilter: multerFilter
 });
-exports.uploadRoleImage = upload.single('photo');
+exports.uploadRoleImages = upload.array('images', 9);
 exports.getRole = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const role = yield Role.findOne({ slug: req.params.sectionSlug });
     if (!role)
@@ -56,12 +56,42 @@ exports.getRole = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 
 exports.createRole = factory.createOne(Role);
 // exports.updateRole = factory.updateOne(Role);
 exports.updateRole = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    if (req.file) {
-        req.body.photo = req.file.filename;
+    if (req.files && req.files.length > 0) {
+        // Get existing images from the role
+        const existingRole = yield Role.findOne({ slug: req.params.sectionSlug });
+        const existingImages = (existingRole === null || existingRole === void 0 ? void 0 : existingRole.images) || [];
+        // Add new image filenames
+        const newImages = req.files.map(file => file.filename);
+        const allImages = [...existingImages, ...newImages];
+        // Ensure we don't exceed 9 images
+        if (allImages.length > 9) {
+            return next(new AppError('Cannot have more than 9 images. Please remove some existing images first.', 400));
+        }
+        req.body.images = allImages;
     }
     const role = yield Role.findOneAndUpdate({ slug: req.params.sectionSlug }, req.body, { new: true, runValidators: true });
     if (!role)
         return next(new AppError('No Role found with that slug', 404));
+    res.status(200).json({
+        status: 'success',
+        data: role
+    });
+}));
+exports.deleteRoleImage = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { imageIndex } = req.params;
+    const role = yield Role.findOne({ slug: req.params.sectionSlug });
+    if (!role)
+        return next(new AppError('No Role found with that slug', 404));
+    if (!role.images || role.images.length === 0) {
+        return next(new AppError('No images found for this role', 404));
+    }
+    const index = parseInt(imageIndex);
+    if (index < 0 || index >= role.images.length) {
+        return next(new AppError('Invalid image index', 400));
+    }
+    // Remove image from array
+    role.images.splice(index, 1);
+    yield role.save();
     res.status(200).json({
         status: 'success',
         data: role

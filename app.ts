@@ -20,7 +20,9 @@ const skillRouter = require('./routes/skillRoutes');
 const traitRouter = require('./routes/traitRoutes');
 const armorTaxonomyRouter = require('./routes/armorTaxonomyRoutes');
 const weaponTaxonomyRouter = require('./routes/weaponTaxonomyRoutes');
+const toolTaxonomyRouter = require('./routes/toolTaxonomyRoutes');
 const userRouter = require('./routes/userRoutes');
+const imageRouter = require('./routes/imageRoutes');
 
 const app = express();
 
@@ -79,7 +81,9 @@ app.use('/api/v1/skills', skillRouter);
 app.use('/api/v1/traits', traitRouter);
 app.use('/api/v1/armorTaxonomy', armorTaxonomyRouter);
 app.use('/api/v1/weaponTaxonomy', weaponTaxonomyRouter);
+app.use('/api/v1/toolTaxonomy', toolTaxonomyRouter);
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/images', imageRouter);
 
 app.all('*', (req: Request, res: Response, next: NextFunction) => {
   next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));

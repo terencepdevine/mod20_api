@@ -20,22 +20,9 @@ const skillRouter = require('./routes/skillRoutes');
 const traitRouter = require('./routes/traitRoutes');
 const armorTaxonomyRouter = require('./routes/armorTaxonomyRoutes');
 const weaponTaxonomyRouter = require('./routes/weaponTaxonomyRoutes');
+const toolTaxonomyRouter = require('./routes/toolTaxonomyRoutes');
 const userRouter = require('./routes/userRoutes');
-
-// Import all models to ensure they're registered with Mongoose
-require('./models/abilityModel');
-require('./models/armorTaxonomyModel');
-require('./models/imageModel');
-require('./models/raceModel');
-require('./models/roleModel');
-require('./models/skillModel');
-require('./models/systemCharacterModel');
-require('./models/systemModel');
-require('./models/toolTaxonomyModel');
-require('./models/traitModel');
-require('./models/userModel');
-require('./models/weaponTaxonomyModel');
-
+const imageRouter = require('./routes/imageRoutes');
 const app = express();
 // Set security HTTP headers
 app.use(helmet());
@@ -86,7 +73,9 @@ app.use('/api/v1/skills', skillRouter);
 app.use('/api/v1/traits', traitRouter);
 app.use('/api/v1/armorTaxonomy', armorTaxonomyRouter);
 app.use('/api/v1/weaponTaxonomy', weaponTaxonomyRouter);
+app.use('/api/v1/toolTaxonomy', toolTaxonomyRouter);
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/images', imageRouter);
 app.all('*', (req, res, next) => {
     next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });

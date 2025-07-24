@@ -6,8 +6,8 @@ const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const factory = require('./handlerFactory');
 
-interface RequestWithFile extends Request {
-  file?: Express.Multer.File;
+interface RequestWithFiles extends Request {
+  files?: Express.Multer.File[];
 }
 
 exports.getAllRoles = factory.getAll(Role);
@@ -48,12 +48,37 @@ const upload = multer({
   fileFilter: multerFilter
 });
 
-exports.uploadRoleImage = upload.single('photo');
+exports.uploadRoleImages = upload.array('images', 9);
 
 exports.getRole = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const role = await Role.findOne({ slug: req.params.sectionSlug });
     if (!role) return next(new AppError('No Role found with that Slug', 404));
+
+    // Migration: Convert old imageIds to new images structure if needed
+    // @ts-ignore - accessing potentially undefined field for migration
+    if (role.imageIds && role.imageIds.length > 0 && (!role.images || role.images.length === 0)) {
+      // @ts-ignore - accessing potentially undefined field for migration
+      const orderedImages = role.imageIds.map((imageId: string, index: number) => ({
+        imageId,
+        orderby: index
+      }));
+      
+      // Update the role in the database with the new structure
+      await Role.findOneAndUpdate(
+        { slug: req.params.sectionSlug },
+        { 
+          images: orderedImages,
+          $unset: { imageIds: 1 } // Remove the old field
+        },
+        { new: false } // Don't return the updated document since we have it locally
+      );
+      
+      // Update the local role object
+      role.images = orderedImages;
+      // @ts-ignore - removing old field
+      delete role.imageIds;
+    }
 
     res.status(200).json({
       status: 'success',
@@ -69,10 +94,48 @@ exports.createRole = factory.createOne(Role);
 // exports.updateRole = factory.updateOne(Role);
 
 exports.updateRole = catchAsync(
-  async (req: RequestWithFile, res: Response, next: NextFunction) => {
-    if (req.file) {
-      req.body.photo = req.file.filename;
+  async (req: RequestWithFiles, res: Response, next: NextFunction) => {
+    // Handle file uploads (for new image uploads via file input)
+    if (req.files && req.files.length > 0) {
+      // Get existing images from the role
+      const existingRole = await Role.findOne({ slug: req.params.sectionSlug });
+      const existingImages = existingRole?.images || [];
+      
+      // Add new image filenames with orderby values
+      const newImages = req.files.map((file, index) => ({
+        imageId: file.filename,
+        orderby: existingImages.length + index
+      }));
+      const allImages = [...existingImages, ...newImages];
+      
+      // Ensure we don't exceed 9 images
+      if (allImages.length > 9) {
+        return next(new AppError('Cannot have more than 9 images. Please remove some existing images first.', 400));
+      }
+      
+      req.body.images = allImages;
     }
+    
+    // Handle ordered image structure updates (from drag and drop reordering)
+    if (req.body.images && Array.isArray(req.body.images)) {
+      // Validate the ordered images structure
+      const isValidStructure = req.body.images.every(img => 
+        img && typeof img.imageId === 'string' && typeof img.orderby === 'number'
+      );
+      
+      if (!isValidStructure) {
+        return next(new AppError('Invalid images structure. Expected array of {imageId: string, orderby: number}', 400));
+      }
+      
+      // Ensure we don't exceed 9 images
+      if (req.body.images.length > 9) {
+        return next(new AppError('Cannot have more than 9 images', 400));
+      }
+      
+      // Sort by orderby to maintain consistency
+      req.body.images = req.body.images.sort((a, b) => a.orderby - b.orderby);
+    }
+    
     const role = await Role.findOneAndUpdate(
       { slug: req.params.sectionSlug },
       req.body,
@@ -80,6 +143,32 @@ exports.updateRole = catchAsync(
     );
     if (!role) return next(new AppError('No Role found with that slug', 404));
 
+    res.status(200).json({
+      status: 'success',
+      data: role
+    });
+  }
+);
+
+exports.deleteRoleImage = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    const { imageIndex } = req.params;
+    const role = await Role.findOne({ slug: req.params.sectionSlug });
+    
+    if (!role) return next(new AppError('No Role found with that slug', 404));
+    if (!role.images || role.images.length === 0) {
+      return next(new AppError('No images found for this role', 404));
+    }
+    
+    const index = parseInt(imageIndex);
+    if (index < 0 || index >= role.images.length) {
+      return next(new AppError('Invalid image index', 400));
+    }
+    
+    // Remove image from array
+    role.images.splice(index, 1);
+    await role.save();
+    
     res.status(200).json({
       status: 'success',
       data: role

@@ -68,10 +68,26 @@ const roleSchema = new Schema<RoleType>(
         ref: 'System'
       }
     ],
-    photo: {
-      type: String,
-      default: 'default.jpg'
-    }
+    images: {
+      type: [{
+        imageId: {
+          type: String,
+          required: true
+        },
+        orderby: {
+          type: Number,
+          required: true
+        }
+      }],
+      default: [],
+      validate: {
+        validator: function(images: Array<{imageId: string, orderby: number}>) {
+          return images.length <= 9;
+        },
+        message: 'A role cannot have more than 9 images'
+      }
+    },
+    backgroundImageId: String
   },
   {
     toJSON: { virtuals: true },

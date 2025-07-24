@@ -11,7 +11,11 @@ router
 router
   .route('/:sectionSlug')
   .get(roleController.getRole)
-  .patch(roleController.uploadRoleImage, roleController.updateRole)
+  .patch(roleController.uploadRoleImages, roleController.updateRole)
   .delete(roleController.deleteRole);
+
+router
+  .route('/:sectionSlug/images/:imageIndex')
+  .delete(roleController.deleteRoleImage);
 
 module.exports = router;
