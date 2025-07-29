@@ -26,6 +26,69 @@ exports.getRace = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 
         }
     });
 }));
-exports.createRace = factory.createOne(Race);
-exports.updateRace = factory.updateOne(Race);
-exports.deleteRace = factory.deleteOne(Race);
+exports.createRace = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    console.log('=== CREATING NEW RACE ===');
+    console.log('Request body:', req.body);
+    const newRace = yield Race.create(req.body);
+    console.log('New race created with ID:', newRace._id);
+    // Add the race to the SystemCharacter's races array
+    const SystemCharacter = require('../models/systemCharacterModel');
+    const System = require('../models/systemModel');
+    console.log('Looking for system with ID:', req.body.system);
+    // Find the system and get its character
+    const system = yield System.findById(req.body.system);
+    console.log('Found system:', system ? system.name : 'null');
+    console.log('System character ID:', system === null || system === void 0 ? void 0 : system.character);
+    if (system && system.character) {
+        const updateResult = yield SystemCharacter.findByIdAndUpdate(system.character, { $addToSet: { races: newRace._id } }, { new: true });
+        console.log('SystemCharacter update result:', updateResult ? 'success' : 'failed');
+        console.log('Updated races array length:', (_a = updateResult === null || updateResult === void 0 ? void 0 : updateResult.races) === null || _a === void 0 ? void 0 : _a.length);
+    }
+    else {
+        console.log('System or system.character not found for race creation');
+    }
+    res.status(201).json({
+        status: 'success',
+        data: {
+            race: newRace
+        }
+    });
+}));
+exports.updateRace = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    // Handle ordered image structure updates (from MediaLibrary)
+    if (req.body.images && Array.isArray(req.body.images)) {
+        // Validate the ordered images structure
+        const isValidStructure = req.body.images.every((img) => img && typeof img.imageId === 'string' && typeof img.orderby === 'number');
+        if (!isValidStructure) {
+            return next(new AppError('Invalid images structure. Expected array of {imageId: string, orderby: number}', 400));
+        }
+        // Ensure we don't exceed 9 images
+        if (req.body.images.length > 9) {
+            return next(new AppError('Cannot have more than 9 images', 400));
+        }
+        // Sort by orderby to maintain consistency
+        req.body.images = req.body.images.sort((a, b) => a.orderby - b.orderby);
+    }
+    // Remove system field from updates to preserve existing system association
+    const updateData = Object.assign({}, req.body);
+    delete updateData.system;
+    const race = yield Race.findOneAndUpdate({ slug: req.params.sectionSlug }, updateData, { new: true, runValidators: true });
+    if (!race)
+        return next(new AppError('No Race found with that slug', 404));
+    res.status(200).json({
+        status: 'success',
+        data: {
+            race: race
+        }
+    });
+}));
+exports.deleteRace = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const race = yield Race.findOneAndDelete({ slug: req.params.sectionSlug });
+    if (!race)
+        return next(new AppError('No Race found with that slug', 404));
+    res.status(204).json({
+        status: 'success',
+        data: null
+    });
+}));

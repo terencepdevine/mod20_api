@@ -40,10 +40,7 @@ const systemSchema = new Schema<SystemType>(
       type: Schema.Types.ObjectId,
       ref: 'SystemCharacter'
     },
-    backgroundImage: {
-      type: String,
-      default: 'default.jpg'
-    }
+    backgroundImageId: String
   },
   {
     toJSON: { virtuals: true },
@@ -75,6 +72,10 @@ systemSchema.pre(/^find/, function(this: any, next: () => void) {
   this.populate({
     path: 'character',
     select: '-__v'
+  }).populate({
+    path: 'abilities',
+    select: 'name description order',
+    options: { sort: { order: 1 } }
   });
   next();
 });

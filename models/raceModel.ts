@@ -7,24 +7,21 @@ const raceSchema = new Schema<RaceType>(
   {
     name: {
       type: String,
-      required: [true, 'A System must have a name'],
-      unique: true,
+      required: [true, 'A Race must have a name'],
       trim: true,
       minlength: 2,
       maxlength: 40
     },
     slug: {
       type: String,
-      required: [true, 'A System must have a slug'],
-      unique: true,
+      required: [true, 'A Race must have a slug'],
       lowercase: true
     },
-    systems: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'System'
-      }
-    ],
+    system: {
+      type: Schema.Types.ObjectId,
+      ref: 'System',
+      required: true
+    },
     age: {
       type: Number
     },
@@ -49,10 +46,48 @@ const raceSchema = new Schema<RaceType>(
     languages: {
       type: String
     },
+    images: {
+      type: [
+        {
+          imageId: {
+            type: String,
+            required: true
+          },
+          orderby: {
+            type: Number,
+            required: true
+          }
+        }
+      ],
+      default: [],
+      validate: {
+        validator: function(
+          images: Array<{ imageId: string; orderby: number }>
+        ) {
+          return images.length <= 9;
+        },
+        message: 'A race cannot have more than 9 images'
+      }
+    },
+    backgroundImageId: String,
     traits: [
       {
         type: Schema.Types.ObjectId,
         ref: 'Trait'
+      }
+    ],
+    abilityScoreBonuses: [
+      {
+        ability: {
+          type: Schema.Types.ObjectId,
+          ref: 'Ability',
+          required: true
+        },
+        bonus: {
+          type: Number,
+          required: true,
+          default: 0
+        }
       }
     ],
     alignment: {
@@ -91,6 +126,10 @@ const raceSchema = new Schema<RaceType>(
   }
 );
 
+// Add compound unique index for name + system and slug + system
+raceSchema.index({ name: 1, system: 1 }, { unique: true });
+raceSchema.index({ slug: 1, system: 1 }, { unique: true });
+
 raceSchema.pre('save', setSlug);
 raceSchema.pre('findOneAndUpdate', setSlug);
 
@@ -100,6 +139,9 @@ raceSchema.pre(/^find/, function(next) {
   this.populate({
     path: 'traits',
     select: '-__v'
+  }).populate({
+    path: 'abilityScoreBonuses.ability',
+    select: 'name'
   });
   next();
 });

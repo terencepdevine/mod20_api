@@ -62,25 +62,6 @@ const imageSchema = new Schema<ImageType>(
         },
         message: 'An image cannot have more than 20 tags'
       }
-    },
-    // Legacy fields for backward compatibility
-    file: {
-      type: String,
-      trim: true
-    },
-    altText: {
-      type: String,
-      maxlength: [200, 'Alt text must have less than 200 characters'],
-      trim: true
-    },
-    artistName: {
-      type: String,
-      maxlength: [100, 'Artist name must have less than 100 characters'],
-      trim: true
-    },
-    artistUrl: {
-      type: String,
-      trim: true
     }
   },
   {
@@ -91,7 +72,7 @@ const imageSchema = new Schema<ImageType>(
 );
 
 // Virtual for full file path
-imageSchema.virtual('filePath').get(function() {
+imageSchema.virtual('filePath').get(function(this: any) {
   return `/public/img/media/${this.filename}`;
 });
 

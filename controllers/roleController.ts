@@ -52,21 +52,66 @@ exports.uploadRoleImages = upload.array('images', 9);
 
 exports.getRole = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const role = await Role.findOne({ slug: req.params.sectionSlug });
+    const role = await Role.findOne({ slug: req.params.sectionSlug }).populate({
+      path: 'primaryAbility',
+      select: 'name description'
+    });
     if (!role) return next(new AppError('No Role found with that Slug', 404));
-
 
     res.status(200).json({
       status: 'success',
       data: {
-        breadcrumbs: {},
         role: role
       }
     });
   }
 );
 
-exports.createRole = factory.createOne(Role);
+exports.createRole = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    console.log('=== CREATING NEW ROLE ===');
+    console.log('Request body:', req.body);
+    
+    const newRole = await Role.create(req.body);
+    console.log('New role created with ID:', newRole._id);
+    
+    // Add the role to the SystemCharacter's roles array
+    const SystemCharacter = require('../models/systemCharacterModel');
+    const System = require('../models/systemModel');
+    
+    console.log('Looking for system with ID:', req.body.system);
+    
+    // Find the system and get its character
+    const system = await System.findById(req.body.system);
+    console.log('Found system:', system ? system.name : 'null');
+    console.log('System character ID:', system?.character);
+    
+    if (system && system.character) {
+      const updateResult = await SystemCharacter.findByIdAndUpdate(
+        system.character,
+        { $addToSet: { roles: newRole._id } },
+        { new: true }
+      );
+      console.log('SystemCharacter update result:', updateResult ? 'success' : 'failed');
+      console.log('Updated roles array length:', updateResult?.roles?.length);
+    } else {
+      console.log('System or system.character not found for role creation');
+    }
+    
+    // Populate the role with primaryAbility like getRole does
+    const populatedRole = await Role.findById(newRole._id).populate({
+      path: 'primaryAbility',
+      select: 'name description'
+    });
+
+    res.status(201).json({
+      status: 'success',
+      data: {
+        role: populatedRole
+      }
+    });
+  }
+);
 // exports.updateRole = factory.updateOne(Role);
 
 exports.updateRole = catchAsync(
@@ -95,7 +140,7 @@ exports.updateRole = catchAsync(
     // Handle ordered image structure updates (from drag and drop reordering)
     if (req.body.images && Array.isArray(req.body.images)) {
       // Validate the ordered images structure
-      const isValidStructure = req.body.images.every(img => 
+      const isValidStructure = req.body.images.every((img: any) => 
         img && typeof img.imageId === 'string' && typeof img.orderby === 'number'
       );
       
@@ -109,19 +154,28 @@ exports.updateRole = catchAsync(
       }
       
       // Sort by orderby to maintain consistency
-      req.body.images = req.body.images.sort((a, b) => a.orderby - b.orderby);
+      req.body.images = req.body.images.sort((a: any, b: any) => a.orderby - b.orderby);
     }
+    
+    // Remove system field from updates to preserve existing system association
+    const updateData = { ...req.body };
+    delete updateData.system;
     
     const role = await Role.findOneAndUpdate(
       { slug: req.params.sectionSlug },
-      req.body,
+      updateData,
       { new: true, runValidators: true }
-    );
+    ).populate({
+      path: 'primaryAbility',
+      select: 'name description'
+    });
     if (!role) return next(new AppError('No Role found with that slug', 404));
 
     res.status(200).json({
       status: 'success',
-      data: role
+      data: {
+        role: role
+      }
     });
   }
 );
@@ -147,7 +201,9 @@ exports.deleteRoleImage = catchAsync(
     
     res.status(200).json({
       status: 'success',
-      data: role
+      data: {
+        role: role
+      }
     });
   }
 );
@@ -156,6 +212,19 @@ exports.deleteRole = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const role = await Role.findOneAndDelete({ slug: req.params.sectionSlug });
     if (!role) return next(new AppError('No Role found with that slug', 404));
+
+    // Remove the role from the SystemCharacter's roles array
+    const SystemCharacter = require('../models/systemCharacterModel');
+    const System = require('../models/systemModel');
+    
+    // Find the system and remove role from its character
+    const system = await System.findById(role.system);
+    if (system && system.character) {
+      await SystemCharacter.findByIdAndUpdate(
+        system.character,
+        { $pull: { roles: role._id } }
+      );
+    }
 
     res.status(204).json({
       status: 'success',

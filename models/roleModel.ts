@@ -7,7 +7,6 @@ const roleSchema = new Schema<RoleType>(
     name: {
       type: String,
       required: [true, 'A role must have a name'],
-      unique: true,
       trim: true,
       maxlength: [40, 'A role name must have less or equal then 40 characters'],
       minlength: [4, 'A role name must have more or equal then 10 characters']
@@ -32,6 +31,10 @@ const roleSchema = new Schema<RoleType>(
         ref: 'WeaponTaxonomy'
       }
     ],
+    primaryAbility: {
+      type: Schema.Types.ObjectId,
+      ref: 'Ability'
+    },
     savingThrows: [
       {
         type: Schema.Types.ObjectId,
@@ -62,32 +65,43 @@ const roleSchema = new Schema<RoleType>(
         ref: 'ToolTaxonomy'
       }
     ],
-    systems: [
-      {
-        type: Schema.Types.ObjectId,
-        ref: 'System'
-      }
-    ],
+    system: {
+      type: Schema.Types.ObjectId,
+      ref: 'System',
+      required: true
+    },
     images: {
-      type: [{
-        imageId: {
-          type: String,
-          required: true
-        },
-        orderby: {
-          type: Number,
-          required: true
+      type: [
+        {
+          imageId: {
+            type: String,
+            required: true
+          },
+          orderby: {
+            type: Number,
+            required: true
+          }
         }
-      }],
+      ],
       default: [],
       validate: {
-        validator: function(images: Array<{imageId: string, orderby: number}>) {
+        validator: function(
+          images: Array<{ imageId: string; orderby: number }>
+        ) {
           return images.length <= 9;
         },
         message: 'A role cannot have more than 9 images'
       }
     },
-    backgroundImageId: String
+    backgroundImageId: String,
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
   },
   {
     toJSON: { virtuals: true },
@@ -95,16 +109,13 @@ const roleSchema = new Schema<RoleType>(
   }
 );
 
+// Add compound unique index for name + system
+roleSchema.index({ name: 1, system: 1 }, { unique: true });
+
 roleSchema.pre('save', setSlug);
 roleSchema.pre('findOneAndUpdate', setSlug);
 
 roleSchema.pre(/^find/, function(this: any, next: () => void) {
-  this.populate({ path: 'weaponTaxonomies' })
-    .populate({ path: 'armorTaxonomies' })
-    .populate({ path: 'savingThrows', select: 'name' })
-    .populate({ path: 'skills', select: 'name -relatedAbility' })
-    .populate({ path: 'tools' });
-
   next();
 });
 

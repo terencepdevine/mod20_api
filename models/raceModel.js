@@ -15,37 +15,44 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
 const setSlug = require('../utils/setSlug');
 const raceSchema = new mongoose_1.Schema({
     name: {
         type: String,
-        required: [true, 'A System must have a name'],
-        unique: true,
+        required: [true, 'A Race must have a name'],
         trim: true,
         minlength: 2,
         maxlength: 40
     },
     slug: {
         type: String,
-        required: [true, 'A System must have a slug'],
-        unique: true,
+        required: [true, 'A Race must have a slug'],
         lowercase: true
     },
-    systems: [
-        {
-            type: mongoose_1.Schema.Types.ObjectId,
-            ref: 'System'
-        }
-    ],
+    system: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'System',
+        required: true
+    },
     age: {
         type: Number
     },
@@ -70,10 +77,46 @@ const raceSchema = new mongoose_1.Schema({
     languages: {
         type: String
     },
+    images: {
+        type: [
+            {
+                imageId: {
+                    type: String,
+                    required: true
+                },
+                orderby: {
+                    type: Number,
+                    required: true
+                }
+            }
+        ],
+        default: [],
+        validate: {
+            validator: function (images) {
+                return images.length <= 9;
+            },
+            message: 'A race cannot have more than 9 images'
+        }
+    },
+    backgroundImageId: String,
     traits: [
         {
             type: mongoose_1.Schema.Types.ObjectId,
             ref: 'Trait'
+        }
+    ],
+    abilityScoreBonuses: [
+        {
+            ability: {
+                type: mongoose_1.Schema.Types.ObjectId,
+                ref: 'Ability',
+                required: true
+            },
+            bonus: {
+                type: Number,
+                required: true,
+                default: 0
+            }
         }
     ],
     alignment: {
@@ -109,6 +152,9 @@ const raceSchema = new mongoose_1.Schema({
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
 });
+// Add compound unique index for name + system and slug + system
+raceSchema.index({ name: 1, system: 1 }, { unique: true });
+raceSchema.index({ slug: 1, system: 1 }, { unique: true });
 raceSchema.pre('save', setSlug);
 raceSchema.pre('findOneAndUpdate', setSlug);
 raceSchema.pre(/^find/, function (next) {
@@ -116,6 +162,9 @@ raceSchema.pre(/^find/, function (next) {
     this.populate({
         path: 'traits',
         select: '-__v'
+    }).populate({
+        path: 'abilityScoreBonuses.ability',
+        select: 'name'
     });
     next();
 });
