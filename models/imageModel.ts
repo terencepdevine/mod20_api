@@ -62,6 +62,11 @@ const imageSchema = new Schema<ImageType>(
         },
         message: 'An image cannot have more than 20 tags'
       }
+    },
+    system: {
+      type: Schema.Types.ObjectId,
+      ref: 'System',
+      required: [true, 'An image must belong to a system']
     }
   },
   {
@@ -80,6 +85,7 @@ imageSchema.virtual('filePath').get(function(this: any) {
 imageSchema.index({ filename: 1 });
 imageSchema.index({ tags: 1 });
 imageSchema.index({ uploadedAt: -1 });
+imageSchema.index({ system: 1 }); // Index for system-specific queries
 
 const Image: Model<ImageType> = mongoose.model<ImageType>('Image', imageSchema);
 

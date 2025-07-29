@@ -29,8 +29,6 @@ const systemSchema = new Schema<SystemType>(
     },
     version: {
       type: String,
-      default: '1.0',
-      required: true,
       match: /^[0-9]+\.[0-9]+$/
     },
     introduction: {
@@ -40,7 +38,15 @@ const systemSchema = new Schema<SystemType>(
       type: Schema.Types.ObjectId,
       ref: 'SystemCharacter'
     },
-    backgroundImageId: String
+    backgroundImageId: String,
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
+    }
   },
   {
     toJSON: { virtuals: true },

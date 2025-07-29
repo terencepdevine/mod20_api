@@ -147,6 +147,14 @@ const raceSchema = new mongoose_1.Schema({
                 'Alignment description must have less than 500 characters'
             ]
         }
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
     }
 }, {
     toJSON: { virtuals: true },

@@ -11,6 +11,10 @@ exports.getRace = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const race = await Race.findOne({ slug: req.params.sectionSlug });
     if (!race) return next(new AppError('No Race found with that Slug', 404));
+    
+    console.log('getRace - Race createdAt:', race.createdAt);
+    console.log('getRace - Race updatedAt:', race.updatedAt);
+    
     res.status(200).json({
       status: 'success',
       data: {
@@ -28,6 +32,9 @@ exports.createRace = catchAsync(
     
     const newRace = await Race.create(req.body);
     console.log('New race created with ID:', newRace._id);
+    console.log('Race createdAt:', newRace.createdAt);
+    console.log('Race updatedAt:', newRace.updatedAt);
+    console.log('Full race object:', JSON.stringify(newRace, null, 2));
 
     // Add the race to the SystemCharacter's races array
     const SystemCharacter = require('../models/systemCharacterModel');
@@ -86,6 +93,9 @@ exports.updateRace = catchAsync(
     // Remove system field from updates to preserve existing system association
     const updateData = { ...req.body };
     delete updateData.system;
+    
+    // Manually set updatedAt timestamp
+    updateData.updatedAt = new Date();
 
     const race = await Race.findOneAndUpdate(
       { slug: req.params.sectionSlug },

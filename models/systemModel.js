@@ -71,7 +71,6 @@ const systemSchema = new mongoose_1.Schema({
     version: {
         type: String,
         default: '1.0',
-        required: true,
         match: /^[0-9]+\.[0-9]+$/
     },
     introduction: {
@@ -81,7 +80,15 @@ const systemSchema = new mongoose_1.Schema({
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'SystemCharacter'
     },
-    backgroundImageId: String
+    backgroundImageId: String,
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
+    }
 }, {
     toJSON: { virtuals: true },
     toObject: { virtuals: true }

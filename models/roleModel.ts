@@ -33,7 +33,12 @@ const roleSchema = new Schema<RoleType>(
     ],
     primaryAbility: {
       type: Schema.Types.ObjectId,
-      ref: 'Ability'
+      ref: 'Ability',
+      default: null,
+      set: function(v: any) {
+        // Convert empty strings to null to prevent casting errors
+        return v === '' || v === undefined ? null : v;
+      }
     },
     savingThrows: [
       {

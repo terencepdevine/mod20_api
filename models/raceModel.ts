@@ -118,6 +118,14 @@ const raceSchema = new Schema<RaceType>(
           'Alignment description must have less than 500 characters'
         ]
       }
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    updatedAt: {
+      type: Date,
+      default: Date.now
     }
   },
   {

@@ -8,6 +8,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -70,7 +81,11 @@ exports.uploadImage = catchAsync((req, res, next) => __awaiter(void 0, void 0, v
     //   return next(new AppError('Unable to read image dimensions', 400));
     // }
     // Extract additional fields from request body
-    const { description, alt, tags } = req.body;
+    const { description, alt, tags, system } = req.body;
+    // System is required for all images
+    if (!system) {
+        return next(new AppError('System ID is required for image upload', 400));
+    }
     // Parse tags if provided as string
     let parsedTags = [];
     if (tags) {
@@ -94,9 +109,12 @@ exports.uploadImage = catchAsync((req, res, next) => __awaiter(void 0, void 0, v
             height: dimensions.height
         },
         tags: parsedTags,
+        system: system, // Associate with system
         uploadedAt: new Date()
     };
+    console.log('uploadImage: Creating image with data:', imageData);
     const image = yield Image.create(imageData);
+    console.log('uploadImage: Created image:', image);
     res.status(201).json({
         status: 'success',
         data: {
@@ -106,14 +124,25 @@ exports.uploadImage = catchAsync((req, res, next) => __awaiter(void 0, void 0, v
 }));
 // Get all images for media library (with pagination, search, filtering)
 exports.getAllImages = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    // Build query
-    const features = new APIFeatures(Image.find(), req.query)
+    const _a = req.query, { systemId } = _a, otherQuery = __rest(_a, ["systemId"]);
+    console.log('getAllImages: Received systemId:', systemId);
+    console.log('getAllImages: Query params:', req.query);
+    // Build base query - filter by system if provided
+    let baseQuery = systemId ? Image.find({ system: systemId }) : Image.find();
+    console.log('getAllImages: Using query filter:', systemId ? { system: systemId } : 'no filter');
+    // Build query with features (excluding systemId from query params to avoid conflicts)
+    const features = new APIFeatures(baseQuery, otherQuery)
         .filter()
         .sort()
         .limitFields()
         .paginate();
     const images = yield features.query;
-    const total = yield Image.countDocuments();
+    const total = systemId
+        ? yield Image.countDocuments({ system: systemId })
+        : yield Image.countDocuments();
+    console.log('getAllImages: Found images:', images.length);
+    console.log('getAllImages: Sample image systems:', images.slice(0, 3).map((img) => ({ id: img._id, system: img.system })));
+    console.log('getAllImages: Full first image data:', images[0]);
     res.status(200).json({
         status: 'success',
         results: images.length,
@@ -189,8 +218,12 @@ exports.deleteImage = catchAsync((req, res, next) => __awaiter(void 0, void 0, v
 }));
 // Search images (additional endpoint for advanced search)
 exports.searchImages = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const { q, tags, mimetype, minWidth, maxWidth, minHeight, maxHeight } = req.query;
+    const { q, tags, mimetype, minWidth, maxWidth, minHeight, maxHeight, systemId } = req.query;
     const searchQuery = {};
+    // Filter by system if provided
+    if (systemId) {
+        searchQuery.system = systemId;
+    }
     // Text search across filename, originalName, description, alt
     if (q) {
         searchQuery.$or = [

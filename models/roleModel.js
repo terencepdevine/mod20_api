@@ -65,7 +65,12 @@ const roleSchema = new mongoose_1.Schema({
     ],
     primaryAbility: {
         type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'Ability'
+        ref: 'Ability',
+        default: null,
+        set: function (v) {
+            // Convert empty strings to null to prevent casting errors
+            return v === '' || v === undefined ? null : v;
+        }
     },
     savingThrows: [
         {

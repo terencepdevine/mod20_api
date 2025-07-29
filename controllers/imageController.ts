@@ -82,7 +82,12 @@ exports.uploadImage = catchAsync(
     // }
 
     // Extract additional fields from request body
-    const { description, alt, tags } = req.body;
+    const { description, alt, tags, system } = req.body;
+    
+    // System is required for all images
+    if (!system) {
+      return next(new AppError('System ID is required for image upload', 400));
+    }
     
     // Parse tags if provided as string
     let parsedTags = [];
@@ -107,10 +112,13 @@ exports.uploadImage = catchAsync(
         height: dimensions.height
       },
       tags: parsedTags,
+      system: system, // Associate with system
       uploadedAt: new Date()
     };
 
+    console.log('uploadImage: Creating image with data:', imageData);
     const image = await Image.create(imageData);
+    console.log('uploadImage: Created image:', image);
 
     res.status(201).json({
       status: 'success',
@@ -124,15 +132,31 @@ exports.uploadImage = catchAsync(
 // Get all images for media library (with pagination, search, filtering)
 exports.getAllImages = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    // Build query
-    const features = new APIFeatures(Image.find(), req.query)
+    const { systemId, ...otherQuery } = req.query;
+    
+    console.log('getAllImages: Received systemId:', systemId);
+    console.log('getAllImages: Query params:', req.query);
+    
+    // Build base query - filter by system if provided
+    let baseQuery = systemId ? Image.find({ system: systemId }) : Image.find();
+    
+    console.log('getAllImages: Using query filter:', systemId ? { system: systemId } : 'no filter');
+    
+    // Build query with features (excluding systemId from query params to avoid conflicts)
+    const features = new APIFeatures(baseQuery, otherQuery)
       .filter()
       .sort()
       .limitFields()
       .paginate();
 
     const images = await features.query;
-    const total = await Image.countDocuments();
+    const total = systemId 
+      ? await Image.countDocuments({ system: systemId })
+      : await Image.countDocuments();
+
+    console.log('getAllImages: Found images:', images.length);
+    console.log('getAllImages: Sample image systems:', images.slice(0, 3).map((img: any) => ({ id: img._id, system: img.system })));
+    console.log('getAllImages: Full first image data:', images[0]);
 
     res.status(200).json({
       status: 'success',
@@ -235,9 +259,14 @@ exports.deleteImage = catchAsync(
 // Search images (additional endpoint for advanced search)
 exports.searchImages = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { q, tags, mimetype, minWidth, maxWidth, minHeight, maxHeight } = req.query;
+    const { q, tags, mimetype, minWidth, maxWidth, minHeight, maxHeight, systemId } = req.query;
     
     const searchQuery: any = {};
+    
+    // Filter by system if provided
+    if (systemId) {
+      searchQuery.system = systemId;
+    }
     
     // Text search across filename, originalName, description, alt
     if (q) {

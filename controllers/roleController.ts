@@ -161,6 +161,7 @@ exports.updateRole = catchAsync(
     const updateData = { ...req.body };
     delete updateData.system;
     
+    
     const role = await Role.findOneAndUpdate(
       { slug: req.params.sectionSlug },
       updateData,

@@ -18,6 +18,8 @@ exports.getRace = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 
     const race = yield Race.findOne({ slug: req.params.sectionSlug });
     if (!race)
         return next(new AppError('No Race found with that Slug', 404));
+    console.log('getRace - Race createdAt:', race.createdAt);
+    console.log('getRace - Race updatedAt:', race.updatedAt);
     res.status(200).json({
         status: 'success',
         data: {
@@ -32,6 +34,9 @@ exports.createRace = catchAsync((req, res, next) => __awaiter(void 0, void 0, vo
     console.log('Request body:', req.body);
     const newRace = yield Race.create(req.body);
     console.log('New race created with ID:', newRace._id);
+    console.log('Race createdAt:', newRace.createdAt);
+    console.log('Race updatedAt:', newRace.updatedAt);
+    console.log('Full race object:', JSON.stringify(newRace, null, 2));
     // Add the race to the SystemCharacter's races array
     const SystemCharacter = require('../models/systemCharacterModel');
     const System = require('../models/systemModel');
@@ -73,6 +78,8 @@ exports.updateRace = catchAsync((req, res, next) => __awaiter(void 0, void 0, vo
     // Remove system field from updates to preserve existing system association
     const updateData = Object.assign({}, req.body);
     delete updateData.system;
+    // Manually set updatedAt timestamp
+    updateData.updatedAt = new Date();
     const race = yield Race.findOneAndUpdate({ slug: req.params.sectionSlug }, updateData, { new: true, runValidators: true });
     if (!race)
         return next(new AppError('No Race found with that slug', 404));
