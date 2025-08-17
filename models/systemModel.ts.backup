@@ -2,27 +2,6 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 import { SystemType } from '@mod20/types/src/SystemType';
 const setSlug = require('../utils/setSlug');
 
-// Mental tier subdocument schema
-const mentalTierSchema = new Schema({
-  minPercentage: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 100
-  },
-  maxPercentage: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 100
-  },
-  condition: {
-    type: Schema.Types.ObjectId,
-    ref: 'Condition',
-    required: true
-  }
-}, { _id: true });
-
 const systemSchema = new Schema<SystemType>(
   {
     name: {
@@ -56,19 +35,6 @@ const systemSchema = new Schema<SystemType>(
       ref: 'SystemCharacter'
     },
     backgroundImageId: String,
-    
-    // Mental/Resilience System fields
-    mental: {
-      type: Boolean,
-      default: false
-    },
-    mentalName: {
-      type: String,
-      trim: true,
-      maxlength: 50
-    },
-    mentalTiers: [mentalTierSchema],
-    
     createdAt: {
       type: Date,
       default: Date.now
@@ -115,9 +81,6 @@ systemSchema.pre(/^find/, function(this: any, next: () => void) {
   }).populate({
     path: 'skills',
     select: 'name description'
-  }).populate({
-    path: 'mentalTiers.condition',
-    select: 'name description severity'
   });
   next();
 });
