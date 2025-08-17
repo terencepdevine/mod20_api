@@ -56,26 +56,14 @@ exports.getRole = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 
     });
 }));
 exports.createRole = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a;
-    console.log('=== CREATING NEW ROLE ===');
-    console.log('Request body:', req.body);
     const newRole = yield Role.create(req.body);
-    console.log('New role created with ID:', newRole._id);
     // Add the role to the SystemCharacter's roles array
     const SystemCharacter = require('../models/systemCharacterModel');
     const System = require('../models/systemModel');
-    console.log('Looking for system with ID:', req.body.system);
     // Find the system and get its character
     const system = yield System.findById(req.body.system);
-    console.log('Found system:', system ? system.name : 'null');
-    console.log('System character ID:', system === null || system === void 0 ? void 0 : system.character);
     if (system && system.character) {
-        const updateResult = yield SystemCharacter.findByIdAndUpdate(system.character, { $addToSet: { roles: newRole._id } }, { new: true });
-        console.log('SystemCharacter update result:', updateResult ? 'success' : 'failed');
-        console.log('Updated roles array length:', (_a = updateResult === null || updateResult === void 0 ? void 0 : updateResult.roles) === null || _a === void 0 ? void 0 : _a.length);
-    }
-    else {
-        console.log('System or system.character not found for role creation');
+        yield SystemCharacter.findByIdAndUpdate(system.character, { $addToSet: { roles: newRole._id } }, { new: true });
     }
     // Populate the role with primaryAbility like getRole does
     const populatedRole = yield Role.findById(newRole._id).populate({

@@ -28,6 +28,7 @@ const multer_1 = __importDefault(require("multer"));
 const System = require('../models/systemModel');
 const SystemCharacter = require('../models/systemCharacterModel');
 const Ability = require('../models/abilityModel');
+const Skill = require('../models/skillModel');
 const Role = require('../models/roleModel');
 const Race = require('../models/raceModel');
 // Utils
@@ -68,21 +69,54 @@ exports.uploadBackgroundImage = upload.single('backgroundImage');
  */
 const createSystemAbilities = (abilities, systemId) => __awaiter(void 0, void 0, void 0, function* () {
     if (!abilities || !Array.isArray(abilities))
-        return [];
+        return { ids: [], idMap: new Map() };
     const abilityIds = [];
+    const idMap = new Map(); // Maps frontend temp IDs to MongoDB ObjectIds
     for (let i = 0; i < abilities.length; i++) {
         const abilityData = abilities[i];
         if (abilityData.name && abilityData.name.trim()) {
             const ability = yield Ability.create({
                 name: abilityData.name.trim(),
                 description: abilityData.description || '',
+                abbr: abilityData.abbr || '',
                 system: systemId,
                 order: abilityData.order !== undefined ? abilityData.order : i
             });
             abilityIds.push(ability._id);
+            // Map the frontend temp ID to the real MongoDB ObjectId
+            if (abilityData.id) {
+                idMap.set(abilityData.id, ability._id.toString());
+            }
         }
     }
-    return abilityIds;
+    return { ids: abilityIds, idMap };
+});
+/**
+ * Creates skills for a system and returns their IDs
+ */
+const createSystemSkills = (skills, systemId, abilityIdMap) => __awaiter(void 0, void 0, void 0, function* () {
+    if (!skills || !Array.isArray(skills))
+        return [];
+    const skillIds = [];
+    for (const skillData of skills) {
+        if (skillData.name && skillData.name.trim()) {
+            // Convert frontend ability ID to MongoDB ObjectId using the mapping
+            let relatedAbilityId = null;
+            if (skillData.relatedAbility) {
+                // Check if it's a temp ID that needs mapping
+                const mappedId = abilityIdMap.get(skillData.relatedAbility);
+                relatedAbilityId = mappedId || skillData.relatedAbility;
+            }
+            const skill = yield Skill.create({
+                name: skillData.name.trim(),
+                description: skillData.description || '',
+                relatedAbility: relatedAbilityId,
+                system: systemId
+            });
+            skillIds.push(skill._id);
+        }
+    }
+    return skillIds;
 });
 /**
  * Cascade delete all system-related data
@@ -93,6 +127,7 @@ const cascadeDeleteSystemData = (systemId, characterId) => __awaiter(void 0, voi
         Role.deleteMany({ system: systemId }),
         Race.deleteMany({ system: systemId }),
         Ability.deleteMany({ system: systemId }),
+        Skill.deleteMany({ system: systemId }),
         characterId ? SystemCharacter.findByIdAndDelete(characterId) : Promise.resolve()
     ]);
 });
@@ -111,29 +146,48 @@ exports.getSystem = catchAsync((req, res, next) => __awaiter(void 0, void 0, voi
     });
 }));
 exports.createSystem = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const _a = req.body, { abilities } = _a, systemData = __rest(_a, ["abilities"]);
+    const _a = req.body, { abilities, skills } = _a, systemData = __rest(_a, ["abilities", "skills"]);
     // Create the system first
     const system = yield System.create(systemData);
     // Handle abilities creation if provided
+    let abilityIdMap = new Map();
     if (abilities && Array.isArray(abilities)) {
-        const abilityIds = yield createSystemAbilities(abilities, system._id);
+        const { ids: abilityIds, idMap } = yield createSystemAbilities(abilities, system._id);
+        abilityIdMap = idMap;
         if (abilityIds.length > 0) {
             system.abilities = abilityIds;
-            yield system.save();
         }
     }
-    // Populate abilities for response, sorted by order
-    yield system.populate({
-        path: 'abilities',
-        options: { sort: { order: 1 } }
-    });
+    // Handle skills creation if provided (must happen after abilities for ID mapping)
+    if (skills && Array.isArray(skills)) {
+        const skillIds = yield createSystemSkills(skills, system._id, abilityIdMap);
+        if (skillIds.length > 0) {
+            system.skills = skillIds;
+        }
+    }
+    // Save if we added abilities or skills
+    if ((abilities && abilities.length > 0) || (skills && skills.length > 0)) {
+        yield system.save();
+    }
+    // Populate abilities and skills for response
+    yield system.populate([
+        {
+            path: 'abilities',
+            options: { sort: { order: 1 } }
+        },
+        {
+            path: 'skills',
+            select: 'name description relatedAbility'
+        }
+    ]);
     res.status(201).json({
         status: 'success',
         data: system
     });
 }));
 exports.updateSystem = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    const _a = req.body, { abilities } = _a, systemUpdates = __rest(_a, ["abilities"]);
+    var _a, _b;
+    const _c = req.body, { abilities, skills } = _c, systemUpdates = __rest(_c, ["abilities", "skills"]);
     // Handle file upload
     if (req.file) {
         systemUpdates.backgroundImage = req.file.filename;
@@ -144,12 +198,104 @@ exports.updateSystem = catchAsync((req, res, next) => __awaiter(void 0, void 0, 
         return next(new AppError('No System found with that Slug', 404));
     }
     // Handle abilities update if provided
+    let abilityIdMap = new Map();
+    // First, build a map of ALL existing abilities for the system (for skill references)
+    const allExistingAbilities = yield Ability.find({ system: existingSystem._id });
+    allExistingAbilities.forEach((ability) => {
+        abilityIdMap.set(ability._id.toString(), ability._id.toString());
+    });
     if (abilities && Array.isArray(abilities)) {
-        // Remove existing abilities for this system
-        yield Ability.deleteMany({ system: existingSystem._id });
-        // Create new abilities
-        const abilityIds = yield createSystemAbilities(abilities, existingSystem._id);
+        const abilityIds = [];
+        // Get current abilities for comparison
+        const currentAbilities = yield Ability.find({ system: existingSystem._id });
+        const currentAbilityIds = currentAbilities.map((ability) => ability._id.toString());
+        // Process each ability in the submitted list
+        for (let i = 0; i < abilities.length; i++) {
+            const abilityData = abilities[i];
+            if (abilityData.id && currentAbilityIds.includes(abilityData.id.toString())) {
+                // Update existing ability (name, description, abbr, order) but preserve ObjectId
+                yield Ability.findByIdAndUpdate(abilityData.id, {
+                    name: (_a = abilityData.name) === null || _a === void 0 ? void 0 : _a.trim(),
+                    order: abilityData.order !== undefined ? abilityData.order : i,
+                    description: abilityData.description || '',
+                    abbr: abilityData.abbr || ''
+                });
+                abilityIds.push(abilityData.id);
+                // For existing abilities, the frontend ID should already be the real ObjectId
+                abilityIdMap.set(abilityData.id, abilityData.id);
+            }
+            else if (abilityData.name && abilityData.name.trim()) {
+                // Create new ability (for abilities without id or with invalid id)
+                const newAbility = yield Ability.create({
+                    name: abilityData.name.trim(),
+                    description: abilityData.description || '',
+                    abbr: abilityData.abbr || '',
+                    system: existingSystem._id,
+                    order: abilityData.order !== undefined ? abilityData.order : i
+                });
+                abilityIds.push(newAbility._id);
+                // Map frontend temp ID to real ObjectId for new abilities
+                if (abilityData.id) {
+                    abilityIdMap.set(abilityData.id, newAbility._id.toString());
+                }
+            }
+        }
+        // Find abilities that were removed
+        const newAbilityIds = abilityIds.map((id) => id.toString());
+        const abilitiesToDelete = currentAbilityIds.filter((id) => !newAbilityIds.includes(id));
+        if (abilitiesToDelete.length > 0) {
+            // Clean up references in roles before deleting abilities
+            yield Role.updateMany({ primaryAbility: { $in: abilitiesToDelete } }, { $set: { primaryAbility: null } });
+            yield Role.updateMany({ savingThrows: { $in: abilitiesToDelete } }, { $pullAll: { savingThrows: abilitiesToDelete } });
+            // Delete the abilities
+            yield Ability.deleteMany({ _id: { $in: abilitiesToDelete } });
+        }
+        // Update the system's abilities array
         systemUpdates.abilities = abilityIds;
+    }
+    // Handle skills update if provided
+    if (skills && Array.isArray(skills)) {
+        const skillIds = [];
+        // Get current skills for comparison
+        const currentSkills = yield Skill.find({ system: existingSystem._id });
+        const currentSkillIds = currentSkills.map((skill) => skill._id.toString());
+        // Process each skill in the submitted list
+        for (const skillData of skills) {
+            // Convert frontend ability ID to MongoDB ObjectId using the mapping
+            let relatedAbilityId = null;
+            if (skillData.relatedAbility) {
+                const mappedId = abilityIdMap.get(skillData.relatedAbility);
+                relatedAbilityId = mappedId || skillData.relatedAbility;
+            }
+            if (skillData.id && currentSkillIds.includes(skillData.id.toString())) {
+                // Update existing skill
+                yield Skill.findByIdAndUpdate(skillData.id, {
+                    name: (_b = skillData.name) === null || _b === void 0 ? void 0 : _b.trim(),
+                    description: skillData.description || '',
+                    relatedAbility: relatedAbilityId
+                });
+                skillIds.push(skillData.id); // This should already be a valid ObjectId string from existing skills
+            }
+            else if (skillData.name && skillData.name.trim()) {
+                // Create new skill
+                const newSkill = yield Skill.create({
+                    name: skillData.name.trim(),
+                    description: skillData.description || '',
+                    relatedAbility: relatedAbilityId,
+                    system: existingSystem._id
+                });
+                skillIds.push(newSkill._id);
+            }
+        }
+        // Find skills that were removed
+        const newSkillIds = skillIds.map((id) => id.toString());
+        const skillsToDelete = currentSkillIds.filter((id) => !newSkillIds.includes(id));
+        if (skillsToDelete.length > 0) {
+            // Delete the removed skills
+            yield Skill.deleteMany({ _id: { $in: skillsToDelete } });
+        }
+        // Update the system's skills array
+        systemUpdates.skills = skillIds;
     }
     // Manually set updatedAt timestamp
     systemUpdates.updatedAt = new Date();
@@ -157,10 +303,16 @@ exports.updateSystem = catchAsync((req, res, next) => __awaiter(void 0, void 0, 
     const system = yield System.findOneAndUpdate({ slug: req.params.systemSlug }, systemUpdates, {
         new: true,
         runValidators: true
-    }).populate({
-        path: 'abilities',
-        options: { sort: { order: 1 } }
-    });
+    }).populate([
+        {
+            path: 'abilities',
+            options: { sort: { order: 1 } }
+        },
+        {
+            path: 'skills',
+            select: 'name description relatedAbility'
+        }
+    ]);
     res.status(200).json({
         status: 'success',
         data: system

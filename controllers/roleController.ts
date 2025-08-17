@@ -69,33 +69,21 @@ exports.getRole = catchAsync(
 
 exports.createRole = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    console.log('=== CREATING NEW ROLE ===');
-    console.log('Request body:', req.body);
-    
     const newRole = await Role.create(req.body);
-    console.log('New role created with ID:', newRole._id);
     
     // Add the role to the SystemCharacter's roles array
     const SystemCharacter = require('../models/systemCharacterModel');
     const System = require('../models/systemModel');
     
-    console.log('Looking for system with ID:', req.body.system);
-    
     // Find the system and get its character
     const system = await System.findById(req.body.system);
-    console.log('Found system:', system ? system.name : 'null');
-    console.log('System character ID:', system?.character);
     
     if (system && system.character) {
-      const updateResult = await SystemCharacter.findByIdAndUpdate(
+      await SystemCharacter.findByIdAndUpdate(
         system.character,
         { $addToSet: { roles: newRole._id } },
         { new: true }
       );
-      console.log('SystemCharacter update result:', updateResult ? 'success' : 'failed');
-      console.log('Updated roles array length:', updateResult?.roles?.length);
-    } else {
-      console.log('System or system.character not found for role creation');
     }
     
     // Populate the role with primaryAbility like getRole does

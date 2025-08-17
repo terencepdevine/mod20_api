@@ -2,12 +2,76 @@ import { Request, Response, NextFunction } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
+import sharp from 'sharp';
 // import sizeOf from 'image-size'; // Commented out - install with: npm install image-size @types/image-size
 
 const Image = require('../models/imageModel');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const APIFeatures = require('../utils/apiFeatures');
+
+// Image resize configurations for different image types
+const IMAGE_RESIZE_CONFIG = {
+  background: {
+    width: 1160,
+    height: 320,
+    suffix: '-bg'
+  },
+  gallery: {
+    width: 1200,
+    height: 1200,
+    suffix: '-gallery'
+  },
+  // Add more configurations as needed
+  thumbnail: {
+    width: 300,
+    height: 300,
+    suffix: '-thumb'
+  }
+};
+
+// Generic image resize function
+async function resizeImage(
+  originalPath: string,
+  originalFilename: string,
+  imageType: string
+) {
+  const config =
+    IMAGE_RESIZE_CONFIG[imageType as keyof typeof IMAGE_RESIZE_CONFIG];
+  if (!config) {
+    throw new Error(`Unknown image type: ${imageType}`);
+  }
+
+  // Wait a small amount of time for file to be fully written by multer
+  await new Promise(resolve => setTimeout(resolve, 100));
+
+  // Create new filename for the resized version
+  const ext = path.extname(originalFilename);
+  const baseName = path.basename(originalFilename, ext);
+  const resizedFilename = `${baseName}${config.suffix}${ext}`;
+  const resizedPath = path.join(path.dirname(originalPath), resizedFilename);
+
+  // Resize image based on configuration
+  await sharp(originalPath)
+    .resize(config.width, config.height, {
+      fit: 'cover',
+      position: 'center'
+    })
+    .toFile(resizedPath);
+
+  // Get the new file stats and metadata
+  const resizedStats = fs.statSync(resizedPath);
+  const resizedMetadata = await sharp(resizedPath).metadata();
+
+  return {
+    filename: resizedFilename,
+    dimensions: {
+      width: resizedMetadata.width || config.width,
+      height: resizedMetadata.height || config.height
+    },
+    fileSize: resizedStats.size
+  };
+}
 
 interface RequestWithFile extends Request {
   file?: Express.Multer.File;
@@ -34,7 +98,9 @@ const multerStorage = multer.diskStorage({
   ) => {
     // Create unique filename with timestamp
     const ext = path.extname(file.originalname);
-    const baseName = path.basename(file.originalname, ext).replace(/[^a-zA-Z0-9]/g, '-');
+    const baseName = path
+      .basename(file.originalname, ext)
+      .replace(/[^a-zA-Z0-9]/g, '-');
     const filename = `${baseName}-${Date.now()}${ext}`;
     cb(null, filename);
   }
@@ -72,7 +138,7 @@ exports.uploadImage = catchAsync(
     // Get image dimensions (using image-size package - install with: npm install image-size @types/image-size)
     // For now, using default dimensions - implement proper dimension detection after installing image-size
     const dimensions = { width: 800, height: 600 }; // Default dimensions - replace with sizeOf(req.file.path) after installing image-size
-    
+
     // TODO: Uncomment after installing image-size package
     // const filePath = req.file.path;
     // const dimensions = sizeOf(filePath);
@@ -82,43 +148,64 @@ exports.uploadImage = catchAsync(
     // }
 
     // Extract additional fields from request body
-    const { description, alt, tags, system } = req.body;
-    
+    const { description, alt, tags, system, imageType } = req.body;
+
     // System is required for all images
     if (!system) {
       return next(new AppError('System ID is required for image upload', 400));
     }
-    
+
     // Parse tags if provided as string
     let parsedTags = [];
     if (tags) {
       try {
         parsedTags = typeof tags === 'string' ? JSON.parse(tags) : tags;
       } catch (e) {
-        parsedTags = typeof tags === 'string' ? tags.split(',').map((tag: string) => tag.trim()) : [];
+        parsedTags =
+          typeof tags === 'string'
+            ? tags.split(',').map((tag: string) => tag.trim())
+            : [];
       }
+    }
+
+    // Store the base filename (without suffix) in database for maximum flexibility
+    const finalFilename = req.file.filename;
+    const finalDimensions = dimensions;
+    const finalFileSize = req.file.size;
+
+    // Generate multiple image versions for flexibility
+    try {
+      const galleryResult = await resizeImage(req.file.path, req.file.filename, 'gallery');
+      console.log('Gallery version created:', galleryResult.dimensions);
+    } catch (error) {
+      console.error('Error creating gallery version:', error);
+    }
+
+    try {
+      const backgroundResult = await resizeImage(req.file.path, req.file.filename, 'background');
+      console.log('Background version created:', backgroundResult.dimensions);
+    } catch (error) {
+      console.error('Error creating background version:', error);
     }
 
     // Create image record
     const imageData = {
-      filename: req.file.filename,
+      filename: finalFilename,
       originalName: req.file.originalname,
       description: description || '',
       alt: alt || req.file.originalname,
-      fileSize: req.file.size,
+      fileSize: finalFileSize,
       mimetype: req.file.mimetype,
       dimensions: {
-        width: dimensions.width,
-        height: dimensions.height
+        width: finalDimensions.width,
+        height: finalDimensions.height
       },
       tags: parsedTags,
       system: system, // Associate with system
       uploadedAt: new Date()
     };
 
-    console.log('uploadImage: Creating image with data:', imageData);
     const image = await Image.create(imageData);
-    console.log('uploadImage: Created image:', image);
 
     res.status(201).json({
       status: 'success',
@@ -133,15 +220,10 @@ exports.uploadImage = catchAsync(
 exports.getAllImages = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const { systemId, ...otherQuery } = req.query;
-    
-    console.log('getAllImages: Received systemId:', systemId);
-    console.log('getAllImages: Query params:', req.query);
-    
+
     // Build base query - filter by system if provided
     let baseQuery = systemId ? Image.find({ system: systemId }) : Image.find();
-    
-    console.log('getAllImages: Using query filter:', systemId ? { system: systemId } : 'no filter');
-    
+
     // Build query with features (excluding systemId from query params to avoid conflicts)
     const features = new APIFeatures(baseQuery, otherQuery)
       .filter()
@@ -150,13 +232,9 @@ exports.getAllImages = catchAsync(
       .paginate();
 
     const images = await features.query;
-    const total = systemId 
+    const total = systemId
       ? await Image.countDocuments({ system: systemId })
       : await Image.countDocuments();
-
-    console.log('getAllImages: Found images:', images.length);
-    console.log('getAllImages: Sample image systems:', images.slice(0, 3).map((img: any) => ({ id: img._id, system: img.system })));
-    console.log('getAllImages: Full first image data:', images[0]);
 
     res.status(200).json({
       status: 'success',
@@ -173,7 +251,7 @@ exports.getAllImages = catchAsync(
 exports.getImage = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const image = await Image.findById(req.params.id);
-    
+
     if (!image) {
       return next(new AppError('No image found with that ID', 404));
     }
@@ -193,7 +271,7 @@ exports.updateImage = catchAsync(
     // Only allow updating certain fields
     const allowedFields = ['description', 'alt', 'tags'];
     const updateData: any = {};
-    
+
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
         updateData[field] = req.body[field];
@@ -205,18 +283,16 @@ exports.updateImage = catchAsync(
       try {
         updateData.tags = JSON.parse(updateData.tags);
       } catch (e) {
-        updateData.tags = updateData.tags.split(',').map((tag: string) => tag.trim());
+        updateData.tags = updateData.tags
+          .split(',')
+          .map((tag: string) => tag.trim());
       }
     }
 
-    const image = await Image.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      {
-        new: true,
-        runValidators: true
-      }
-    );
+    const image = await Image.findByIdAndUpdate(req.params.id, updateData, {
+      new: true,
+      runValidators: true
+    });
 
     if (!image) {
       return next(new AppError('No image found with that ID', 404));
@@ -235,7 +311,7 @@ exports.updateImage = catchAsync(
 exports.deleteImage = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
     const image = await Image.findById(req.params.id);
-    
+
     if (!image) {
       return next(new AppError('No image found with that ID', 404));
     }
@@ -259,15 +335,24 @@ exports.deleteImage = catchAsync(
 // Search images (additional endpoint for advanced search)
 exports.searchImages = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { q, tags, mimetype, minWidth, maxWidth, minHeight, maxHeight, systemId } = req.query;
-    
+    const {
+      q,
+      tags,
+      mimetype,
+      minWidth,
+      maxWidth,
+      minHeight,
+      maxHeight,
+      systemId
+    } = req.query;
+
     const searchQuery: any = {};
-    
+
     // Filter by system if provided
     if (systemId) {
       searchQuery.system = systemId;
     }
-    
+
     // Text search across filename, originalName, description, alt
     if (q) {
       searchQuery.$or = [
@@ -277,29 +362,33 @@ exports.searchImages = catchAsync(
         { alt: { $regex: q, $options: 'i' } }
       ];
     }
-    
+
     // Tag search
     if (tags) {
       const tagArray = typeof tags === 'string' ? tags.split(',') : tags;
       searchQuery.tags = { $in: tagArray };
     }
-    
+
     // Mimetype filter
     if (mimetype) {
       searchQuery.mimetype = { $regex: mimetype, $options: 'i' };
     }
-    
+
     // Dimension filters
     if (minWidth || maxWidth) {
       searchQuery['dimensions.width'] = {};
-      if (minWidth) searchQuery['dimensions.width'].$gte = parseInt(minWidth as string);
-      if (maxWidth) searchQuery['dimensions.width'].$lte = parseInt(maxWidth as string);
+      if (minWidth)
+        searchQuery['dimensions.width'].$gte = parseInt(minWidth as string);
+      if (maxWidth)
+        searchQuery['dimensions.width'].$lte = parseInt(maxWidth as string);
     }
-    
+
     if (minHeight || maxHeight) {
       searchQuery['dimensions.height'] = {};
-      if (minHeight) searchQuery['dimensions.height'].$gte = parseInt(minHeight as string);
-      if (maxHeight) searchQuery['dimensions.height'].$lte = parseInt(maxHeight as string);
+      if (minHeight)
+        searchQuery['dimensions.height'].$gte = parseInt(minHeight as string);
+      if (maxHeight)
+        searchQuery['dimensions.height'].$lte = parseInt(maxHeight as string);
     }
 
     const images = await Image.find(searchQuery)

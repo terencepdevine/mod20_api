@@ -27,10 +27,6 @@ const systemSchema = new Schema<SystemType>(
     slug: {
       type: String
     },
-    version: {
-      type: String,
-      match: /^[0-9]+\.[0-9]+$/
-    },
     introduction: {
       type: String
     },
@@ -80,8 +76,11 @@ systemSchema.pre(/^find/, function(this: any, next: () => void) {
     select: '-__v'
   }).populate({
     path: 'abilities',
-    select: 'name description order',
+    select: 'name description abbr order',
     options: { sort: { order: 1 } }
+  }).populate({
+    path: 'skills',
+    select: 'name description'
   });
   next();
 });

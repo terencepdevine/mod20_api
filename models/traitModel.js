@@ -34,15 +34,50 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+const setSlug = require('../utils/setSlug');
 const traitSchema = new mongoose_1.Schema({
     name: {
         type: String,
-        required: true,
-        unique: true
+        required: [true, 'A trait must have a name'],
+        trim: true,
+        minlength: 2,
+        maxlength: 40
+    },
+    slug: {
+        type: String,
+        lowercase: true
     },
     description: {
-        type: String
+        type: String,
+        trim: true
+    },
+    system: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'System',
+        required: true
+    },
+    order: {
+        type: Number,
+        default: 0
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    },
+    updatedAt: {
+        type: Date,
+        default: Date.now
     }
+}, {
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
+// Add compound unique index for slug + system (slugs must be unique within a system)
+traitSchema.index({ slug: 1, system: 1 }, { unique: true });
+// Add index for performance (but not unique to allow duplicate names)
+traitSchema.index({ name: 1, system: 1 });
+// Add slug generation middleware
+traitSchema.pre('save', setSlug);
+traitSchema.pre('findOneAndUpdate', setSlug);
 const Trait = mongoose_1.default.model('Trait', traitSchema);
 module.exports = Trait;

@@ -37,8 +37,19 @@ const mongoose_1 = __importStar(require("mongoose"));
 const abilitySchema = new mongoose_1.Schema({
     name: { type: String, required: true },
     description: { type: String },
+    abbr: { type: String },
     system: { type: mongoose_1.Schema.Types.ObjectId, ref: 'System', required: true },
     order: { type: Number, default: 0 }
+}, {
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
 });
-const Ability = mongoose_1.default.model('Ability', abilitySchema);
+// Ensure model is registered properly
+let Ability;
+try {
+    Ability = mongoose_1.default.model('Ability');
+}
+catch (error) {
+    Ability = mongoose_1.default.model('Ability', abilitySchema);
+}
 module.exports = Ability;

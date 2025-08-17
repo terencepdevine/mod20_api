@@ -44,28 +44,38 @@ app.use(mongoSanitize());
 
 // Data sanitization whitelist
 app.use((req: Request, res: Response, next: NextFunction) => {
+  const sanitizeOptions = {
+    allowedTags: [
+      'h1',
+      'h2',
+      'h3',
+      'h4',
+      'h5',
+      'h6',
+      'p',
+      'b',
+      'i',
+      'strong',
+      'em',
+      'blockquote',
+      'ul',
+      'ol',
+      'li',
+      'a'
+    ],
+    allowedAttributes: {
+      'a': ['href', 'target', 'rel']
+    }
+  };
+
   if (req.body.introduction) {
-    req.body.introduction = sanitizeHtml(req.body.introduction, {
-      allowedTags: [
-        'h1',
-        'h2',
-        'h3',
-        'h4',
-        'h5',
-        'h6',
-        'p',
-        'b',
-        'i',
-        'strong',
-        'em',
-        'blockquote',
-        'ul',
-        'ol',
-        'li'
-      ],
-      allowedAttributes: {}
-    });
+    req.body.introduction = sanitizeHtml(req.body.introduction, sanitizeOptions);
   }
+  
+  if (req.body.description) {
+    req.body.description = sanitizeHtml(req.body.description, sanitizeOptions);
+  }
+  
   next();
 });
 

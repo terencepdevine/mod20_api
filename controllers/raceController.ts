@@ -12,9 +12,6 @@ exports.getRace = catchAsync(
     const race = await Race.findOne({ slug: req.params.sectionSlug });
     if (!race) return next(new AppError('No Race found with that Slug', 404));
     
-    console.log('getRace - Race createdAt:', race.createdAt);
-    console.log('getRace - Race updatedAt:', race.updatedAt);
-    
     res.status(200).json({
       status: 'success',
       data: {
@@ -27,36 +24,28 @@ exports.getRace = catchAsync(
 
 exports.createRace = catchAsync(
   async (req: Request, res: Response, next: NextFunction) => {
-    console.log('=== CREATING NEW RACE ===');
-    console.log('Request body:', req.body);
-    
+    // Process traits array to extract trait IDs in order
+    if (req.body.traits && Array.isArray(req.body.traits)) {
+      req.body.traits = req.body.traits
+        .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+        .map((t: any) => t.trait);
+    }
+
     const newRace = await Race.create(req.body);
-    console.log('New race created with ID:', newRace._id);
-    console.log('Race createdAt:', newRace.createdAt);
-    console.log('Race updatedAt:', newRace.updatedAt);
-    console.log('Full race object:', JSON.stringify(newRace, null, 2));
 
     // Add the race to the SystemCharacter's races array
     const SystemCharacter = require('../models/systemCharacterModel');
     const System = require('../models/systemModel');
     
-    console.log('Looking for system with ID:', req.body.system);
-    
     // Find the system and get its character
     const system = await System.findById(req.body.system);
-    console.log('Found system:', system ? system.name : 'null');
-    console.log('System character ID:', system?.character);
     
     if (system && system.character) {
-      const updateResult = await SystemCharacter.findByIdAndUpdate(
+      await SystemCharacter.findByIdAndUpdate(
         system.character, 
         { $addToSet: { races: newRace._id } }, 
         { new: true }
       );
-      console.log('SystemCharacter update result:', updateResult ? 'success' : 'failed');
-      console.log('Updated races array length:', updateResult?.races?.length);
-    } else {
-      console.log('System or system.character not found for race creation');
     }
 
     res.status(201).json({
@@ -88,6 +77,17 @@ exports.updateRace = catchAsync(
       
       // Sort by orderby to maintain consistency
       req.body.images = req.body.images.sort((a: any, b: any) => a.orderby - b.orderby);
+    }
+
+    // Process traits array to extract trait IDs in order
+    if (req.body.traits && Array.isArray(req.body.traits)) {
+      console.log('Original traits:', JSON.stringify(req.body.traits));
+      const sortedTraits = req.body.traits
+        .sort((a: any, b: any) => (a.order || 0) - (b.order || 0));
+      console.log('Sorted traits:', JSON.stringify(sortedTraits));
+      const traitIds = sortedTraits.map((t: any) => t.trait);
+      console.log('Final trait IDs:', JSON.stringify(traitIds));
+      req.body.traits = traitIds;
     }
 
     // Remove system field from updates to preserve existing system association

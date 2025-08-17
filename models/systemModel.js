@@ -68,11 +68,6 @@ const systemSchema = new mongoose_1.Schema({
     slug: {
         type: String
     },
-    version: {
-        type: String,
-        default: '1.0',
-        match: /^[0-9]+\.[0-9]+$/
-    },
     introduction: {
         type: String
     },
@@ -120,8 +115,11 @@ systemSchema.pre(/^find/, function (next) {
         select: '-__v'
     }).populate({
         path: 'abilities',
-        select: 'name description order',
+        select: 'name description abbr order',
         options: { sort: { order: 1 } }
+    }).populate({
+        path: 'skills',
+        select: 'name description'
     });
     next();
 });

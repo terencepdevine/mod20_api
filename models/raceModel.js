@@ -48,6 +48,10 @@ const raceSchema = new mongoose_1.Schema({
         required: [true, 'A Race must have a slug'],
         lowercase: true
     },
+    introduction: {
+        type: String,
+        trim: true
+    },
     system: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: 'System',
@@ -169,7 +173,7 @@ raceSchema.pre(/^find/, function (next) {
     // if (this.options.skipPopulation) return next();
     this.populate({
         path: 'traits',
-        select: '-__v'
+        select: 'name description'
     }).populate({
         path: 'abilityScoreBonuses.ability',
         select: 'name'

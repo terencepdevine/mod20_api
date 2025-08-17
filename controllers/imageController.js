@@ -26,11 +26,65 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const multer_1 = __importDefault(require("multer"));
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
+const sharp_1 = __importDefault(require("sharp"));
 // import sizeOf from 'image-size'; // Commented out - install with: npm install image-size @types/image-size
 const Image = require('../models/imageModel');
 const AppError = require('../utils/appError');
 const catchAsync = require('../utils/catchAsync');
 const APIFeatures = require('../utils/apiFeatures');
+// Image resize configurations for different image types
+const IMAGE_RESIZE_CONFIG = {
+    background: {
+        width: 1160,
+        height: 320,
+        suffix: '-bg'
+    },
+    gallery: {
+        width: 1200,
+        height: 1200,
+        suffix: '-gallery'
+    },
+    // Add more configurations as needed
+    thumbnail: {
+        width: 300,
+        height: 300,
+        suffix: '-thumb'
+    }
+};
+// Generic image resize function
+function resizeImage(originalPath, originalFilename, imageType) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const config = IMAGE_RESIZE_CONFIG[imageType];
+        if (!config) {
+            throw new Error(`Unknown image type: ${imageType}`);
+        }
+        // Wait a small amount of time for file to be fully written by multer
+        yield new Promise(resolve => setTimeout(resolve, 100));
+        // Create new filename for the resized version
+        const ext = path_1.default.extname(originalFilename);
+        const baseName = path_1.default.basename(originalFilename, ext);
+        const resizedFilename = `${baseName}${config.suffix}${ext}`;
+        const resizedPath = path_1.default.join(path_1.default.dirname(originalPath), resizedFilename);
+        // Resize image based on configuration
+        yield (0, sharp_1.default)(originalPath)
+            .resize(config.width, config.height, {
+            fit: 'cover',
+            position: 'center'
+        })
+            .toFile(resizedPath);
+        // Get the new file stats and metadata
+        const resizedStats = fs_1.default.statSync(resizedPath);
+        const resizedMetadata = yield (0, sharp_1.default)(resizedPath).metadata();
+        return {
+            filename: resizedFilename,
+            dimensions: {
+                width: resizedMetadata.width || config.width,
+                height: resizedMetadata.height || config.height
+            },
+            fileSize: resizedStats.size
+        };
+    });
+}
 // Multer storage configuration for media library
 const multerStorage = multer_1.default.diskStorage({
     destination: (req, file, cb) => {
@@ -44,7 +98,9 @@ const multerStorage = multer_1.default.diskStorage({
     filename: (req, file, cb) => {
         // Create unique filename with timestamp
         const ext = path_1.default.extname(file.originalname);
-        const baseName = path_1.default.basename(file.originalname, ext).replace(/[^a-zA-Z0-9]/g, '-');
+        const baseName = path_1.default
+            .basename(file.originalname, ext)
+            .replace(/[^a-zA-Z0-9]/g, '-');
         const filename = `${baseName}-${Date.now()}${ext}`;
         cb(null, filename);
     }
@@ -81,7 +137,7 @@ exports.uploadImage = catchAsync((req, res, next) => __awaiter(void 0, void 0, v
     //   return next(new AppError('Unable to read image dimensions', 400));
     // }
     // Extract additional fields from request body
-    const { description, alt, tags, system } = req.body;
+    const { description, alt, tags, system, imageType } = req.body;
     // System is required for all images
     if (!system) {
         return next(new AppError('System ID is required for image upload', 400));
@@ -93,28 +149,48 @@ exports.uploadImage = catchAsync((req, res, next) => __awaiter(void 0, void 0, v
             parsedTags = typeof tags === 'string' ? JSON.parse(tags) : tags;
         }
         catch (e) {
-            parsedTags = typeof tags === 'string' ? tags.split(',').map((tag) => tag.trim()) : [];
+            parsedTags =
+                typeof tags === 'string'
+                    ? tags.split(',').map((tag) => tag.trim())
+                    : [];
         }
+    }
+    // Store the base filename (without suffix) in database for maximum flexibility
+    const finalFilename = req.file.filename;
+    const finalDimensions = dimensions;
+    const finalFileSize = req.file.size;
+    // Generate multiple image versions for flexibility
+    try {
+        const galleryResult = yield resizeImage(req.file.path, req.file.filename, 'gallery');
+        console.log('Gallery version created:', galleryResult.dimensions);
+    }
+    catch (error) {
+        console.error('Error creating gallery version:', error);
+    }
+    try {
+        const backgroundResult = yield resizeImage(req.file.path, req.file.filename, 'background');
+        console.log('Background version created:', backgroundResult.dimensions);
+    }
+    catch (error) {
+        console.error('Error creating background version:', error);
     }
     // Create image record
     const imageData = {
-        filename: req.file.filename,
+        filename: finalFilename,
         originalName: req.file.originalname,
         description: description || '',
         alt: alt || req.file.originalname,
-        fileSize: req.file.size,
+        fileSize: finalFileSize,
         mimetype: req.file.mimetype,
         dimensions: {
-            width: dimensions.width,
-            height: dimensions.height
+            width: finalDimensions.width,
+            height: finalDimensions.height
         },
         tags: parsedTags,
         system: system, // Associate with system
         uploadedAt: new Date()
     };
-    console.log('uploadImage: Creating image with data:', imageData);
     const image = yield Image.create(imageData);
-    console.log('uploadImage: Created image:', image);
     res.status(201).json({
         status: 'success',
         data: {
@@ -125,11 +201,8 @@ exports.uploadImage = catchAsync((req, res, next) => __awaiter(void 0, void 0, v
 // Get all images for media library (with pagination, search, filtering)
 exports.getAllImages = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const _a = req.query, { systemId } = _a, otherQuery = __rest(_a, ["systemId"]);
-    console.log('getAllImages: Received systemId:', systemId);
-    console.log('getAllImages: Query params:', req.query);
     // Build base query - filter by system if provided
     let baseQuery = systemId ? Image.find({ system: systemId }) : Image.find();
-    console.log('getAllImages: Using query filter:', systemId ? { system: systemId } : 'no filter');
     // Build query with features (excluding systemId from query params to avoid conflicts)
     const features = new APIFeatures(baseQuery, otherQuery)
         .filter()
@@ -140,9 +213,6 @@ exports.getAllImages = catchAsync((req, res, next) => __awaiter(void 0, void 0, 
     const total = systemId
         ? yield Image.countDocuments({ system: systemId })
         : yield Image.countDocuments();
-    console.log('getAllImages: Found images:', images.length);
-    console.log('getAllImages: Sample image systems:', images.slice(0, 3).map((img) => ({ id: img._id, system: img.system })));
-    console.log('getAllImages: Full first image data:', images[0]);
     res.status(200).json({
         status: 'success',
         results: images.length,
@@ -181,7 +251,9 @@ exports.updateImage = catchAsync((req, res, next) => __awaiter(void 0, void 0, v
             updateData.tags = JSON.parse(updateData.tags);
         }
         catch (e) {
-            updateData.tags = updateData.tags.split(',').map((tag) => tag.trim());
+            updateData.tags = updateData.tags
+                .split(',')
+                .map((tag) => tag.trim());
         }
     }
     const image = yield Image.findByIdAndUpdate(req.params.id, updateData, {

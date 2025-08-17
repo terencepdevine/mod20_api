@@ -17,6 +17,10 @@ const raceSchema = new Schema<RaceType>(
       required: [true, 'A Race must have a slug'],
       lowercase: true
     },
+    introduction: {
+      type: String,
+      trim: true
+    },
     system: {
       type: Schema.Types.ObjectId,
       ref: 'System',
@@ -146,7 +150,7 @@ raceSchema.pre(/^find/, function(next) {
 
   this.populate({
     path: 'traits',
-    select: '-__v'
+    select: 'name description'
   }).populate({
     path: 'abilityScoreBonuses.ability',
     select: 'name'
