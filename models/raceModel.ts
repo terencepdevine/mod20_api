@@ -22,8 +22,7 @@ const raceSchema = new Schema<RaceType>(
       trim: true
     },
     system: {
-      type: Schema.Types.ObjectId,
-      ref: 'System',
+      type: String,
       required: true
     },
     age: {

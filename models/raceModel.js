@@ -53,8 +53,7 @@ const raceSchema = new mongoose_1.Schema({
         trim: true
     },
     system: {
-        type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'System',
+        type: String,
         required: true
     },
     age: {

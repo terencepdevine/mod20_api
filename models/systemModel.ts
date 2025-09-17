@@ -35,6 +35,40 @@ const systemSchema = new Schema<SystemType>(
       ref: 'SystemCharacter'
     },
     backgroundImageId: String,
+    mental: {
+      type: Boolean,
+      default: false
+    },
+    mentalName: {
+      type: String,
+      default: ''
+    },
+    mentalConditions: [{
+      id: String,
+      name: String,
+      slug: String,
+      description: String,
+      severity: Number,
+      minPercentage: Number,
+      maxPercentage: Number,
+      system: String,
+      createdAt: {
+        type: Date,
+        default: Date.now
+      },
+      updatedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }],
+    backgroundColorFamily: {
+      type: String,
+      default: 'gray'
+    },
+    primaryColorFamily: {
+      type: String,
+      default: 'blue'
+    },
     createdAt: {
       type: Date,
       default: Date.now
