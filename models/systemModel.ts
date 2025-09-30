@@ -94,6 +94,14 @@ const systemSchema = new Schema<SystemType>(
       type: String,
       default: 'blue'
     },
+    headerFontFamily: {
+      type: String,
+      default: 'rubik'
+    },
+    bodyFontFamily: {
+      type: String,
+      default: 'nunito-sans'
+    },
     createdAt: {
       type: Date,
       default: Date.now
