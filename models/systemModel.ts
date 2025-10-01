@@ -2,26 +2,26 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 import { SystemType } from '@mod20/types/src/SystemType';
 const setSlug = require('../utils/setSlug');
 
-// Mental tier subdocument schema
-const mentalTierSchema = new Schema({
-  minPercentage: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 100
-  },
-  maxPercentage: {
-    type: Number,
-    required: true,
-    min: 0,
-    max: 100
-  },
-  condition: {
-    type: Schema.Types.ObjectId,
-    ref: 'Condition',
-    required: true
-  }
-}, { _id: true });
+// Mental tier subdocument schema - COMMENTED OUT until Condition model is properly set up
+// const mentalTierSchema = new Schema({
+//   minPercentage: {
+//     type: Number,
+//     required: true,
+//     min: 0,
+//     max: 100
+//   },
+//   maxPercentage: {
+//     type: Number,
+//     required: true,
+//     min: 0,
+//     max: 100
+//   },
+//   condition: {
+//     type: Schema.Types.ObjectId,
+//     ref: 'Condition',
+//     required: false
+//   }
+// }, { _id: true });
 
 const systemSchema = new Schema<SystemType>(
   {
@@ -85,7 +85,7 @@ const systemSchema = new Schema<SystemType>(
         default: Date.now
       }
     }],
-    mentalTiers: [mentalTierSchema],
+    // mentalTiers: [mentalTierSchema], // COMMENTED OUT until Condition model is properly set up
     backgroundColorFamily: {
       type: String,
       default: 'gray'
@@ -148,10 +148,11 @@ systemSchema.pre(/^find/, function(this: any, next: () => void) {
   }).populate({
     path: 'skills',
     select: 'name description'
-  }).populate({
-    path: 'mentalTiers.condition',
-    select: 'name description severity'
   });
+  // .populate({
+  //   path: 'mentalTiers.condition',
+  //   select: 'name description severity'
+  // }); // COMMENTED OUT until Condition model is properly set up
   next();
 });
 

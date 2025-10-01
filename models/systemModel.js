@@ -44,26 +44,26 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
 const setSlug = require('../utils/setSlug');
-// Mental tier subdocument schema
-const mentalTierSchema = new mongoose_1.Schema({
-    minPercentage: {
-        type: Number,
-        required: true,
-        min: 0,
-        max: 100
-    },
-    maxPercentage: {
-        type: Number,
-        required: true,
-        min: 0,
-        max: 100
-    },
-    condition: {
-        type: mongoose_1.Schema.Types.ObjectId,
-        ref: 'Condition',
-        required: true
-    }
-}, { _id: true });
+// Mental tier subdocument schema - COMMENTED OUT until Condition model is properly set up
+// const mentalTierSchema = new Schema({
+//   minPercentage: {
+//     type: Number,
+//     required: true,
+//     min: 0,
+//     max: 100
+//   },
+//   maxPercentage: {
+//     type: Number,
+//     required: true,
+//     min: 0,
+//     max: 100
+//   },
+//   condition: {
+//     type: Schema.Types.ObjectId,
+//     ref: 'Condition',
+//     required: false
+//   }
+// }, { _id: true });
 const systemSchema = new mongoose_1.Schema({
     name: {
         type: String,
@@ -124,7 +124,7 @@ const systemSchema = new mongoose_1.Schema({
                 default: Date.now
             }
         }],
-    mentalTiers: [mentalTierSchema],
+    // mentalTiers: [mentalTierSchema], // COMMENTED OUT until Condition model is properly set up
     backgroundColorFamily: {
         type: String,
         default: 'gray'
@@ -185,10 +185,11 @@ systemSchema.pre(/^find/, function (next) {
     }).populate({
         path: 'skills',
         select: 'name description'
-    }).populate({
-        path: 'mentalTiers.condition',
-        select: 'name description severity'
     });
+    // .populate({
+    //   path: 'mentalTiers.condition',
+    //   select: 'name description severity'
+    // }); // COMMENTED OUT until Condition model is properly set up
     next();
 });
 const System = mongoose_1.default.model('System', systemSchema);
