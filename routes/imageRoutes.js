@@ -1,5 +1,6 @@
 const express = require('express');
 const imageController = require('../controllers/imageController');
+const authController = require('./../controllers/authController');
 
 const router = express.Router();
 
@@ -9,12 +10,12 @@ router.get('/search', imageController.searchImages);
 router
   .route('/')
   .get(imageController.getAllImages)
-  .post(imageController.uploadImageFile, imageController.uploadImage);
+  .post(authController.protect, authController.restrictTo('admin'), imageController.uploadImageFile, imageController.uploadImage);
 
 router
   .route('/:id')
   .get(imageController.getImage)
-  .patch(imageController.updateImage)
-  .delete(imageController.deleteImage);
+  .patch(authController.protect, authController.restrictTo('admin'), imageController.updateImage)
+  .delete(authController.protect, authController.restrictTo('admin'), imageController.deleteImage);
 
 module.exports = router;

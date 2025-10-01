@@ -2,7 +2,7 @@ const express = require('express');
 const systemController = require('../controllers/systemController');
 const roleRouter = require('../routes/roleRoutes');
 const raceRouter = require('../routes/raceRoutes');
-// const authController = require('./../controllers/authController');
+const authController = require('./../controllers/authController');
 
 const router = express.Router();
 
@@ -18,13 +18,13 @@ router
 router
   .route('/')
   .get(systemController.getAllSystems)
-  .post(systemController.createSystem);
+  .post(authController.protect, authController.restrictTo('admin'), systemController.createSystem);
 
 router
   .route('/:systemSlug')
   .get(systemController.getSystem)
-  .patch(systemController.uploadBackgroundImage, systemController.updateSystem)
-  .delete(systemController.deleteSystem);
+  .patch(authController.protect, authController.restrictTo('admin'), systemController.uploadBackgroundImage, systemController.updateSystem)
+  .delete(authController.protect, authController.restrictTo('admin'), systemController.deleteSystem);
 
 router.use('/:systemSlug/roles', roleRouter);
 router.use('/:systemSlug/races', raceRouter);

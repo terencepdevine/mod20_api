@@ -44,6 +44,26 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
 const setSlug = require('../utils/setSlug');
+// Mental tier subdocument schema
+const mentalTierSchema = new mongoose_1.Schema({
+    minPercentage: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 100
+    },
+    maxPercentage: {
+        type: Number,
+        required: true,
+        min: 0,
+        max: 100
+    },
+    condition: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: 'Condition',
+        required: true
+    }
+}, { _id: true });
 const systemSchema = new mongoose_1.Schema({
     name: {
         type: String,
@@ -76,13 +96,15 @@ const systemSchema = new mongoose_1.Schema({
         ref: 'SystemCharacter'
     },
     backgroundImageId: String,
+    // Mental/Resilience System fields
     mental: {
         type: Boolean,
         default: false
     },
     mentalName: {
         type: String,
-        default: ''
+        trim: true,
+        maxlength: 50
     },
     mentalConditions: [{
             id: String,
@@ -102,6 +124,7 @@ const systemSchema = new mongoose_1.Schema({
                 default: Date.now
             }
         }],
+    mentalTiers: [mentalTierSchema],
     backgroundColorFamily: {
         type: String,
         default: 'gray'
@@ -109,6 +132,14 @@ const systemSchema = new mongoose_1.Schema({
     primaryColorFamily: {
         type: String,
         default: 'blue'
+    },
+    headerFontFamily: {
+        type: String,
+        default: 'rubik'
+    },
+    bodyFontFamily: {
+        type: String,
+        default: 'nunito-sans'
     },
     createdAt: {
         type: Date,
@@ -154,6 +185,9 @@ systemSchema.pre(/^find/, function (next) {
     }).populate({
         path: 'skills',
         select: 'name description'
+    }).populate({
+        path: 'mentalTiers.condition',
+        select: 'name description severity'
     });
     next();
 });
