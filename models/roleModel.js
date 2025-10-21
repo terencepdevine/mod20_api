@@ -128,6 +128,26 @@ const roleSchema = new mongoose_1.Schema({
         }
     },
     backgroundImageId: String,
+    characterSheets: {
+        type: [
+            {
+                name: {
+                    type: String,
+                    required: true
+                },
+                fileId: {
+                    type: String,
+                    required: true
+                },
+                orderby: {
+                    type: Number,
+                    required: true,
+                    default: 0
+                }
+            }
+        ],
+        default: []
+    },
     createdAt: {
         type: Date,
         default: Date.now

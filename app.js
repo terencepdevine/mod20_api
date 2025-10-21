@@ -23,10 +23,15 @@ const weaponTaxonomyRouter = require('./routes/weaponTaxonomyRoutes');
 const toolTaxonomyRouter = require('./routes/toolTaxonomyRoutes');
 const userRouter = require('./routes/userRoutes');
 const imageRouter = require('./routes/imageRoutes');
+const pdfRouter = require('./routes/pdfRoutes');
 const app = express();
 // Set security HTTP headers
 app.use(helmet());
-app.use(cors());
+// CORS configuration - allow credentials from frontend
+app.use(cors({
+    origin: 'http://localhost:5173',
+    credentials: true
+}));
 // Development logging
 if (process.env.NODE_ENV === 'development') {
     app.use(morgan('dev'));
@@ -83,6 +88,7 @@ app.use('/api/v1/weaponTaxonomy', weaponTaxonomyRouter);
 app.use('/api/v1/toolTaxonomy', toolTaxonomyRouter);
 app.use('/api/v1/users', userRouter);
 app.use('/api/v1/images', imageRouter);
+app.use('/api/v1/pdfs', pdfRouter);
 app.all('*', (req, res, next) => {
     next(new AppError(`Can't find ${req.originalUrl} on this server!`, 404));
 });

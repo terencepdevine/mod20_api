@@ -41,6 +41,30 @@ const upload = (0, multer_1.default)({
     fileFilter: multerFilter
 });
 exports.uploadRoleImages = upload.array('images', 9);
+// PDF upload configuration for character sheets
+const pdfStorage = multer_1.default.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'public/pdf/roles');
+    },
+    filename: (req, file, cb) => {
+        const ext = file.mimetype.split('/')[1];
+        const filename = `character-sheet-${req.params.sectionSlug}-${Date.now()}.${ext}`;
+        cb(null, filename);
+    }
+});
+const pdfFilter = (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+        cb(null, true);
+    }
+    else {
+        cb(new AppError('Not a PDF! Please upload only PDF files.', 400));
+    }
+};
+const uploadPdf = (0, multer_1.default)({
+    storage: pdfStorage,
+    fileFilter: pdfFilter
+});
+exports.uploadCharacterSheet = uploadPdf.single('characterSheet');
 exports.getRole = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const role = yield Role.findOne({ slug: req.params.sectionSlug }).populate({
         path: 'primaryAbility',
@@ -110,6 +134,16 @@ exports.updateRole = catchAsync((req, res, next) => __awaiter(void 0, void 0, vo
         // Sort by orderby to maintain consistency
         req.body.images = req.body.images.sort((a, b) => a.orderby - b.orderby);
     }
+    // Handle ordered character sheets structure updates (from drag and drop reordering)
+    if (req.body.characterSheets && Array.isArray(req.body.characterSheets)) {
+        // Validate the ordered character sheets structure
+        const isValidStructure = req.body.characterSheets.every((sheet) => sheet && typeof sheet.name === 'string' && typeof sheet.fileId === 'string' && typeof sheet.orderby === 'number');
+        if (!isValidStructure) {
+            return next(new AppError('Invalid character sheets structure. Expected array of {name: string, fileId: string, orderby: number}', 400));
+        }
+        // Sort by orderby to maintain consistency
+        req.body.characterSheets = req.body.characterSheets.sort((a, b) => a.orderby - b.orderby);
+    }
     // Remove system field from updates to preserve existing system association
     const updateData = Object.assign({}, req.body);
     delete updateData.system;
@@ -140,6 +174,54 @@ exports.deleteRoleImage = catchAsync((req, res, next) => __awaiter(void 0, void 
     }
     // Remove image from array
     role.images.splice(index, 1);
+    yield role.save();
+    res.status(200).json({
+        status: 'success',
+        data: {
+            role: role
+        }
+    });
+}));
+exports.addCharacterSheet = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const role = yield Role.findOne({ slug: req.params.sectionSlug });
+    if (!role)
+        return next(new AppError('No Role found with that slug', 404));
+    // Validate uploaded file and name
+    if (!req.file) {
+        return next(new AppError('Please upload a PDF file', 400));
+    }
+    if (!req.body.name) {
+        return next(new AppError('Name is required for character sheet', 400));
+    }
+    const characterSheets = role.characterSheets || [];
+    const newSheet = {
+        name: req.body.name,
+        fileId: req.file.filename, // Use the uploaded file's filename
+        orderby: req.body.orderby !== undefined ? parseInt(req.body.orderby) : characterSheets.length
+    };
+    role.characterSheets = [...characterSheets, newSheet];
+    yield role.save();
+    res.status(200).json({
+        status: 'success',
+        data: {
+            role: role
+        }
+    });
+}));
+exports.deleteCharacterSheet = catchAsync((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    const { sheetIndex } = req.params;
+    const role = yield Role.findOne({ slug: req.params.sectionSlug });
+    if (!role)
+        return next(new AppError('No Role found with that slug', 404));
+    if (!role.characterSheets || role.characterSheets.length === 0) {
+        return next(new AppError('No character sheets found for this role', 404));
+    }
+    const index = parseInt(sheetIndex);
+    if (index < 0 || index >= role.characterSheets.length) {
+        return next(new AppError('Invalid character sheet index', 400));
+    }
+    // Remove character sheet from array
+    role.characterSheets.splice(index, 1);
     yield role.save();
     res.status(200).json({
         status: 'success',

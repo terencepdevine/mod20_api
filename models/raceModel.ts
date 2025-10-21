@@ -73,6 +73,26 @@ const raceSchema = new Schema<RaceType>(
       }
     },
     backgroundImageId: String,
+    characterSheets: {
+      type: [
+        {
+          name: {
+            type: String,
+            required: true
+          },
+          fileId: {
+            type: String,
+            required: true
+          },
+          orderby: {
+            type: Number,
+            required: true,
+            default: 0
+          }
+        }
+      ],
+      default: []
+    },
     traits: [
       {
         type: Schema.Types.ObjectId,

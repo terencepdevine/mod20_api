@@ -19,4 +19,12 @@ router
   .route('/:sectionSlug/images/:imageIndex')
   .delete(authController.protect, authController.restrictTo('admin'), roleController.deleteRoleImage);
 
+router
+  .route('/:sectionSlug/character-sheets')
+  .post(authController.protect, authController.restrictTo('admin'), roleController.uploadCharacterSheet, roleController.addCharacterSheet);
+
+router
+  .route('/:sectionSlug/character-sheets/:sheetIndex')
+  .delete(authController.protect, authController.restrictTo('admin'), roleController.deleteCharacterSheet);
+
 module.exports = router;

@@ -10,12 +10,12 @@ router.get('/search', imageController.searchImages);
 router
   .route('/')
   .get(imageController.getAllImages)
-  .post(authController.protect, authController.restrictTo('admin'), imageController.uploadImageFile, imageController.uploadImage);
+  .post(authController.protect, imageController.uploadImageFile, imageController.uploadImage); // All authenticated users can upload
 
 router
   .route('/:id')
   .get(imageController.getImage)
-  .patch(authController.protect, authController.restrictTo('admin'), imageController.updateImage)
-  .delete(authController.protect, authController.restrictTo('admin'), imageController.deleteImage);
+  .patch(authController.protect, imageController.updateImage) // All authenticated users can update
+  .delete(authController.protect, authController.restrictTo('admin'), imageController.deleteImage); // Only admins can delete
 
 module.exports = router;
